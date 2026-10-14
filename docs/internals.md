@@ -55,7 +55,7 @@ dsh plugin --profile <name> add dsh-boot-compass
 | `dsh-boot-compass:theme` | `light` / `dark` | 强制主题；不设则跟随 `prefers-color-scheme` |
 | `dsh-boot-compass:total` | 毫秒，800–12000 | 覆盖全片时长；不设则用 `boot.css` 里的 `--total`（3000） |
 | `dsh-boot-compass:replay` | `window` / `any` / `off` | 重播策略，默认 `window`（见「重播」） |
-| `dsh-boot-compass:replaymin` | 毫秒，0–600000 | 窗口要离开多久才算「重新打开」，默认 1000 |
+| `dsh-boot-compass:replaymin` | 毫秒，0–600000 | 窗口要离开多久才算「重新打开」，默认 600（见「重播」） |
 
 在开发者工具控制台里：
 
@@ -160,6 +160,11 @@ shadow root、时钟、定时器和监听器，`finish()` 拆除自己的那一�
 
 整条链路都是可失败的：非 Windows、找不到 koffi、找不到窗口，一律退化成
 `{ok:false}`，`replay` 默认策略下就不重播 —— 启动动画本身不受任何影响。
+
+**门槛默认 600 ms，不是 1000。** 第一版按"1 秒"定，真机上第一次实测的
+「收进托盘再打开」是 **1020 ms** —— 正好压在门槛上，也就是这个功能会在它本该服务的那个
+动作上时灵时不灵。默认值因此降到 600：远高于手滑连点，也稳稳低于人的自然动作。
+宿主 250 ms 采样本身就是下限，比 250 ms 更短的离开，host 看不见，`replaymin` 写多少都一样。
 
 ## 开发工具（不随包发布）
 

@@ -93,7 +93,9 @@ DSH 点 X 是收进托盘，再从托盘打开时页面并没有重新加载，�
 判定结果也让 alt-tab 之外的情况各归各位：**最小化再还原**同样算「重新打开」，会重播；
 **被别的窗口盖住再切回来**不算。
 
-门槛：窗口得真的离开 **1 秒**以上才重播，手滑点了 X 又马上点开不会连着播两遍。
+门槛：窗口得真的离开 **0.6 秒**以上才重播。这个数字是量出来的 —— 真实的「收进托盘再打开」
+是 1020 ms，所以默认值压在它下面，而不是正好压在它身上；否则这个功能会在它本该服务的
+那个动作上时灵时不灵。（宿主每 250 ms 采样一次，比这更短的离开它本来也看不见。）
 
 **Windows 专属。** 其它系统上问不到窗口状态，这个功能就静静地不生效 ——
 启动动画本身一切照旧。
@@ -107,7 +109,7 @@ localStorage.setItem('dsh-boot-compass:mode', 'off')       // 整个关掉，直
 localStorage.setItem('dsh-boot-compass:theme', 'light')    // 强制浅色；默认跟随系统
 localStorage.setItem('dsh-boot-compass:total', 2000)       // 全片时长，800–12000 毫秒
 localStorage.setItem('dsh-boot-compass:replay', 'window')  // 重播策略：window（默认）/ any / off
-localStorage.setItem('dsh-boot-compass:replaymin', 5000)   // 离开多久才算「重新打开」，默认 1000
+localStorage.setItem('dsh-boot-compass:replaymin', 5000)   // 离开多久才算「重新打开」，默认 600
 ```
 
 - `mode` 只认 `'off'`；设成别的值等于没设。
@@ -116,7 +118,7 @@ localStorage.setItem('dsh-boot-compass:replaymin', 5000)   // 离开多久才算
 - `replay` 只认 `'window'` / `'any'` / `'off'`：`'window'` 是默认的精确判定；
   `'any'` 退回纯网页规则（**被盖住也会重播**，非 Windows 上想要这个效果就用它）；
   `'off'` 只播开机那一次。
-- `replaymin` 是重播门槛（毫秒），`0`–`600000`，默认 `1000`。
+- `replaymin` 是重播门槛（毫秒），`0`–`600000`，默认 `600`。
 
 想立刻看效果，不用反复关窗：控制台里 `__dshBoot.replay()` 直接播一遍。
 `__dshBoot.stats()` 会告诉你一共播了几次、上一次因为什么、宿主那边答了什么。

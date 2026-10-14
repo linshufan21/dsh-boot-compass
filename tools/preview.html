@@ -65,7 +65,7 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
   </div>
 </div>
 <div data-dsh-boot><div class="row"><span data-dsh-boot-spinner></span><span>HARNESS 正在加载插件…</span></div></div>
-<div id="probe">宿主行实况 · rows[<b>style, script</b>] · style 407 B · script 58682 B</div>
+<div id="probe">宿主行实况 · rows[<b>style, script</b>] · style 407 B · script 59053 B</div>
 
 <!-- ===== 模拟宿主卡消失 = 应用就绪；这是真实 gate 的输入 ===== -->
 <script>
@@ -176,8 +176,16 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
   var TOTAL_FALLBACK = 3000;
   /** lib/index.js WINDOW_PATH -- keep in sync. */
   var WINDOW_PATH = '/__boot-compass/window';
-  /** Below this, a reopen is a mis-click rather than a new session. */
-  var REPLAY_MIN_DEFAULT = 1000;
+  /**
+   * Below this, a reopen is a mis-click rather than a new session.
+   *
+   * The first default was 1000 ms; a real close-to-tray-and-reopen measured
+   * 1020 ms, which made the feature feel intermittent for exactly the gesture it
+   * exists to serve. The floor now sits well under a natural reopen instead of
+   * on top of it. The host samples at 250 ms, so anything faster than that is
+   * invisible to it whatever this says.
+   */
+  var REPLAY_MIN_DEFAULT = 600;
   /**
    * A transition older than this is history, not a reopen. The heartbeat poll
    * exists to catch a missed event, not to replay a splash seconds late.
