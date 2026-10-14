@@ -8,7 +8,7 @@ DSH 启动时会先画一张「HARNESS 正在加载插件…」的卡。这个�
 > A full-screen boot splash for DSH: a CSS cover lands before the loading card is
 > painted, a seven-beat compass sequence plays, then the app fades up from inside it.
 
-![七段分镜](assets/screenshot-1.png)
+![锁定拍：罗盘合拢，HUD 读配置](assets/screenshot-1.png)
 
 ## 装
 
@@ -49,6 +49,15 @@ dsh plugin --profile <name> add github:linshufan21/dsh-boot-compass
 **停住那一下是故意的**：一直动的东西读起来是"还在忙"，停一下才像"到位了"。
 
 最后冲击波向外投出，整个画面穿过镜头离开，主界面从里面长出来。
+
+| 装载：亮弧扫过刻度 | 释放：冲击波向外投出 |
+| --- | --- |
+| ![装载拍](assets/screenshot-2.png) | ![释放拍](assets/screenshot-3.png) |
+
+浅色主题下是同一套编排，只是底色换成 `#F6F7FB`（`assets/screenshot-4.png`，也在
+`screenshots.json` 里）。整帧分镜十二格：
+
+![七段分镜](assets/storyboard.png)
 
 ## 嫌 3 秒长？
 
