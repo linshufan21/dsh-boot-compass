@@ -1,0 +1,14 @@
+# Bundle patch for dsh-boot-compass.
+#
+# This is what makes the package a PROFILE LAYER rather than an inert dependency:
+# the row below mounts the host half (lib/index.js), which contributes the splash
+# to every index response via the `webserver/index-inject` composition event.
+#
+# A package that declares only `dsh.client` is not installable -- the plugin
+# market's own submission gate rejects it with "declares only dsh.client -- that
+# alone is not installable". This package is host-only for now: the splash and its
+# gate live entirely in injected rows, so no client bundle is needed to show it.
+# A settings row (enable/disable, theme, duration) will add `dsh.client` later.
+- insert:
+    - id: boot-compass
+      name: dsh-boot-compass

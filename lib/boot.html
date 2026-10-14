@@ -1,0 +1,81 @@
+<div id="stage">
+  <div id="veil" class="a"></div>
+  <div id="boot">
+
+    <div class="bg a" id="bg">
+      <div class="aur"><i class="a b1"></i><i class="a b2"></i><i class="a b3"></i></div>
+      <div class="grid"></div><div class="scan"></div><div class="vig"></div>
+    </div>
+    <div class="sweep a"></div>
+    <div class="hline a"></div>
+    <div class="cross a"><i class="h a"></i><i class="rt a"></i>
+      <i class="edge top a"></i><i class="edge bot a"></i></div>
+    <div class="railwrap a">
+      <div class="rail l" id="railL"></div>
+      <div class="rail r" id="railR"></div>
+    </div>
+
+    <div class="stack">
+      <div class="core">
+        <div class="radarwrap a" id="radarwrap">
+          <div class="radar a"></div>
+          <div class="radar r2 a"></div>
+        </div>
+
+        <svg class="mark a" viewBox="0 0 200 200" aria-hidden="true">
+          <g class="bezel-turn a">
+            <circle class="bezel-ring" cx="100" cy="100" r="152"/>
+            <g id="bezel"></g>
+          </g>
+          <circle class="shock a" cx="100" cy="100" r="8" style="--d:.800"/>
+          <circle class="shock a" cx="100" cy="100" r="8" style="--d:.822"/>
+          <circle class="shock a" cx="100" cy="100" r="8" style="--d:.844"/>
+          <g id="motes"></g>
+          <circle class="pulse a" cx="100" cy="100" r="80"/>
+          <g id="ticks"></g>
+          <circle class="ring-dim a" cx="100" cy="100" r="68"/>
+          <circle class="arc-scan a" cx="100" cy="100" r="68" transform="rotate(-90 100 100)"/>
+          <circle class="pg a" cx="100" cy="100" r="96" transform="rotate(-90 100 100)"/>
+          <g class="orbit-turn a">
+            <circle class="orbit-ring" cx="100" cy="100" r="52"/>
+            <g id="nodes"></g>
+          </g>
+          <g class="inner-fade a">
+            <g class="inner-turn a"><circle class="inner-ring" cx="100" cy="100" r="40"/></g>
+          </g>
+          <g class="needle a">
+            <path class="n-south" d="M100 160 L108 100 L92 100 Z"/>
+            <path class="n-north" d="M100 36 L108 100 L92 100 Z"/>
+          </g>
+          <circle cx="100" cy="100" r="7.5" fill="none" stroke="var(--c-hub)" stroke-width="1"/>
+          <circle class="dot a" cx="100" cy="100" r="3.4"/>
+        </svg>
+
+        <div class="flash a"></div>
+      </div>
+
+      <div class="txt a" id="txt">
+        <div class="wm">
+          <span class="wm-i a">DEEPSEEK&nbsp;HARNESS</span>
+          <span class="wm-g g1 a" aria-hidden="true">DEEPSEEK&nbsp;HARNESS</span>
+          <span class="wm-g g2 a" aria-hidden="true">DEEPSEEK&nbsp;HARNESS</span>
+        </div>
+        <div class="rule a"></div>
+        <div class="stat">
+          <span class="st" id="st">正在初始化内核</span>
+          <b class="pc" id="pc">000%</b>
+        </div>
+        <div class="logv a"><div class="logi a" id="logi"></div></div>
+      </div>
+    </div>
+
+    <div class="brk tl a"></div><div class="brk tr a"></div>
+    <div class="brk bl a"></div><div class="brk br a"></div>
+
+    <div class="hud tl a" id="hudTl">DSH // INIT</div>
+    <div class="hud tr a">BOOT SEQUENCE</div>
+    <div class="hud bl a" id="hudBl">PLUGINS 0/7</div>
+    <div class="hud br a">PROFILE DESKTOP · v0.2.0-rc.2</div>
+    <div class="skip a" id="skip">点击任意处跳过 · CLICK TO SKIP</div>
+  </div>
+</div>

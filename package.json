@@ -1,0 +1,81 @@
+{
+  "name": "dsh-boot-compass",
+  "version": "0.1.0",
+  "description": "「点火 / 校准」启动动画：在 DSH 画出加载卡之前接住首帧，播完七段罗盘序列再交接给主界面。纯代码，零视频资源。",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "plugin",
+    "boot-animation",
+    "splash",
+    "startup",
+    "web-ui"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.0-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dshWorkshop": {
+    "schema": "omdsh-workshop-package/v1",
+    "type": "plugin",
+    "integration": {
+      "protocol": "harness-profile",
+      "artifact": "cordis.patch.yml"
+    },
+    "install": {
+      "mode": "transactional",
+      "adapter": "profile-bundle",
+      "failurePolicy": "generation-rollback",
+      "touchesCurrentBeforeActivation": false
+    },
+    "lifecycle": {
+      "activation": "restart-profile",
+      "dispose": "supported"
+    },
+    "permissions": [
+      "web:index-inject",
+      "dom:overlay",
+      "browser:local-storage",
+      "desktop:titlebar-overlay"
+    ],
+    "compatibility": {
+      "dshVersions": [
+        "0.2.0-rc.1"
+      ]
+    },
+    "capability": {
+      "id": "boot-splash",
+      "kind": "ui",
+      "invocation": "Boot the profile's Web GUI and read the first frame from the page: document.documentElement.classList.contains('dshboot-on') on the way in, then #dshboot-host and its shadowRoot's #stage/#boot once parsed.",
+      "expected": "The host half's CSS-only cover lands while <head> is still parsing, so DSH's [data-dsh-boot] card is never visible. The splash then mounts in a shadow root and retires the cover on the same task, plays its seven beats to completion, and releases at the HOLD frame (0.76) only if the app is not yet ready."
+    },
+    "evidence": {
+      "install": null,
+      "failureIsolation": null,
+      "hotReload": null,
+      "remove": null
+    }
+  }
+}

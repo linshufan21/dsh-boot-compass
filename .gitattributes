@@ -1,0 +1,14 @@
+# 所有文本文件按 UTF-8 + LF 存取。
+#
+# 本机的系统级配置里 core.autocrlf=true（见 D:/Git/etc/gitconfig），会在检出时把 LF
+# 翻成 CRLF。这里显式钉死，让 GitHub 上的字节与作者写下的完全一致 —— 这个项目里有
+# 大量中文注释，任何隐式换行改写都会让 diff 变脏，也容易让人误以为编码坏了。
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.tgz binary
+*.woff binary
+*.woff2 binary

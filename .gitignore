@@ -1,0 +1,11 @@
+node_modules/
+*.tgz
+*.log
+npm-debug.log*
+
+# tools/diag.html 是本地排查用的调试页（把 DOM 状态打印进页面再截图），
+# 对看仓库的人没有价值，重新生成即可：node tools/diag.mjs
+tools/diag.html
+
+# tools/preview.html 是生成物，但刻意提交：双击就能看到动画本身。
+# 改了 lib/ 之后请重新生成：node tools/build-preview.mjs
