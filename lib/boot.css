@@ -109,12 +109,19 @@ body{
 }
 
 /* ============================ 舞台 ============================ */
-#stage{position:absolute;inset:0;overflow:hidden;background:var(--c-stage);isolation:isolate}
+/* contain: the splash lives in a shadow root hanging off <html>, and the whole
+   DSH app sits behind it in the same document. Without containment every
+   invalidated gradient inside the splash can walk up to the document root and
+   make the host re-evaluate. `overflow:hidden` already clips, so paint
+   containment changes nothing visually. */
+#stage{position:absolute;inset:0;overflow:hidden;background:var(--c-stage);isolation:isolate;
+  contain:layout style paint}
 
 
 /* 覆盖层：不透明、与宿主同色。退场 = 推过镜头 */
 #veil{position:absolute;inset:0;z-index:3;background:var(--c-stage);
-      transform:scale(1);opacity:1;transform-origin:50% 50%}
+      transform:scale(1);opacity:1;transform-origin:50% 50%;
+      will-change:transform,opacity;backface-visibility:hidden}
 #veil.a{animation-name:veilExit;--d:.88;--dur:.12;--ease:var(--e-exit)}
 @keyframes veilExit{from{transform:scale(1);opacity:1}to{transform:scale(1.2);opacity:0}}
 
@@ -146,8 +153,12 @@ body{
    布局原则：中心 = 高对比 + 快节奏；外围 = 低对比 + 慢节奏。
    "四周空"的解法不是往中心堆元素，而是给边缘低幅度的结构、颜色和运动，
    让视线有地方可去，同时永远不抢中心。 */
-.aur{position:absolute;inset:0;overflow:hidden}
+/* Three ~50vmax radial-gradient discs, each scaling and fading -- that is three
+   large quads the compositor blends every frame. Promoting them up front keeps
+   one texture each instead of paying a re-raster when the animation starts. */
+.aur{position:absolute;inset:0;overflow:hidden;contain:layout style paint}
 .aur i{position:absolute;border-radius:50%;opacity:0;
+  will-change:opacity,transform;backface-visibility:hidden;
   background:radial-gradient(circle closest-side,rgba(var(--c-radar),var(--aur-a)),
              rgba(var(--c-radar),var(--aur-b)) 46%,transparent 74%)}
 .aur .b1{width:58vmax;height:58vmax;left:-16vmax;top:-22vmax;
@@ -162,6 +173,7 @@ body{
 
 /* 斜切扫光：装载段横穿整帧一次（只动 translateX，可合成） */
 .sweep{position:absolute;inset:-25%;opacity:0;
+  will-change:opacity,transform;backface-visibility:hidden;
   background:linear-gradient(102deg,transparent 40%,rgba(var(--c-radar),.05) 47%,
              rgba(var(--c-radar),.12) 50%,rgba(var(--c-radar),.05) 53%,transparent 60%)}
 .sweep.a{animation-name:sweep;--d:.30;--dur:.34;--ease:var(--e-smooth)}
@@ -233,10 +245,14 @@ body{
 .stack{position:relative;display:flex;flex-direction:column;align-items:center;gap:24px}
 .core{position:relative;width:var(--size);height:var(--size)}
 
-/* --- 雷达扫描：conic-gradient 扇形 + 径向遮罩，只旋转（可合成） --- */
+/* --- 雷达扫描：conic-gradient 扇形 + 径向遮罩，只旋转（可合成） ---
+   两个雷达都在高速转（900deg / -1260deg 在 0.53 个时间线内）。conic-gradient
+   叠径向遮罩是这份 CSS 里最贵的栅格，转起来本身是合成的，但没提升的话
+   Chromium 会在动画开始时才现场生成纹理 —— 那一下就是可见的顿。 */
 .radar{position:absolute;left:50%;top:50%;width:var(--radar);height:var(--radar);
   margin-left:calc(var(--radar) / -2);margin-top:calc(var(--radar) / -2);
   border-radius:50%;transform:rotate(0deg);opacity:0;
+  will-change:transform,opacity;backface-visibility:hidden;
   background:conic-gradient(from 0deg,
       rgba(var(--c-radar),0) 0deg,
       rgba(var(--c-radar),0) 252deg,
