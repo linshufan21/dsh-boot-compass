@@ -15,6 +15,14 @@
     "README.md"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/linshufan21/dsh-boot-compass.git"
+  },
+  "homepage": "https://github.com/linshufan21/dsh-boot-compass#readme",
+  "bugs": {
+    "url": "https://github.com/linshufan21/dsh-boot-compass/issues"
+  },
   "keywords": [
     "dsh",
     "dsh-plugin",
