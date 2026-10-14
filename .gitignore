@@ -9,3 +9,7 @@ tools/diag.html
 
 # tools/preview.html 是生成物，但刻意提交：双击就能看到动画本身。
 # 改了 lib/ 之后请重新生成：node tools/build-preview.mjs
+
+# tools/preview-<stem>.html 是 A/B 变体（用某个 git 版本的文件搭的对照预览），
+# 属于测量脚手架，随时可以用 _shoot/build-js-variant.mjs 重建。
+tools/preview-*.html

@@ -5,6 +5,8 @@
 DSH 启动时会先画一张「HARNESS 正在加载插件…」的卡。这个插件在它出现之前就接住画面，
 放一段七拍的罗盘序列，播完再交给主界面。纯代码，零视频资源。
 
+从 0.2.0 起，**关掉窗口再从托盘打开也会重播一遍**；但 alt-tab 切回来不会 —— 下面说为什么。
+
 > A full-screen boot splash for DSH: a CSS cover lands before the loading card is
 > painted, a seven-beat compass sequence plays, then the app fades up from inside it.
 
@@ -67,19 +69,57 @@ dsh plugin --profile <name> add github:linshufan21/dsh-boot-compass
 还有一层保险：主界面如果迟迟没就绪，动画会停在「静止」那一拍等你，最多 12 秒。
 那一下是挑过的 —— 那一刻画面上没有东西在飞。
 
-## 三个开关
+## 再打开也播一遍
+
+DSH 点 X 是收进托盘，再从托盘打开时页面并没有重新加载，所以开机动画本来只播一次。
+0.2.0 起这件事变了：**真的重新打开窗口，就重播一遍**。
+
+麻烦的是「真的」这两个字。网页能看到的信号只有一个：`document.hidden`。而它是**两件事**：
+
+| 你做的事 | 网页看到 | 实际 |
+| --- | --- | --- |
+| 关掉窗口，再点托盘 | 隐藏了 | 窗口真的被隐藏 |
+| 切到别的最大化窗口，再切回来 | 隐藏了 | 窗口只是被盖住 |
+
+实测（Electron 44 / Chromium 152）：托盘关窗 1 ms 后网页就报隐藏，被别的窗口完全盖住
+23 ms 后也报隐藏 —— 在网页这边，这两件事一模一样。所以只看这个信号的话，
+你每次 alt-tab 回来都会被糊一脸动画。
+
+于是插件走了一条更硬的路：宿主侧用 DSH 自带的 FFI 直接问 Windows
+（`IsWindowVisible` / `IsIconic`），它分得很清楚 —— 真被隐藏时它返回 0，
+只是被盖住时它一个字节都不变。网页把「重新打开」这件事交给它判定，
+自己只负责在窗口重新出现时叫一声，所以延迟大约就是一个本地请求。
+
+判定结果也让 alt-tab 之外的情况各归各位：**最小化再还原**同样算「重新打开」，会重播；
+**被别的窗口盖住再切回来**不算。
+
+门槛：窗口得真的离开 **1 秒**以上才重播，手滑点了 X 又马上点开不会连着播两遍。
+
+**Windows 专属。** 其它系统上问不到窗口状态，这个功能就静静地不生效 ——
+启动动画本身一切照旧。
+
+## 五个开关
 
 都在 `localStorage` 里，改完刷新即可：
 
 ```js
-localStorage.setItem('dsh-boot-compass:mode', 'off')     // 整个关掉，直接进 DSH
-localStorage.setItem('dsh-boot-compass:theme', 'light')  // 强制浅色；默认跟随系统
-localStorage.setItem('dsh-boot-compass:total', 2000)     // 全片时长，800–12000 毫秒
+localStorage.setItem('dsh-boot-compass:mode', 'off')       // 整个关掉，直接进 DSH
+localStorage.setItem('dsh-boot-compass:theme', 'light')    // 强制浅色；默认跟随系统
+localStorage.setItem('dsh-boot-compass:total', 2000)       // 全片时长，800–12000 毫秒
+localStorage.setItem('dsh-boot-compass:replay', 'window')  // 重播策略：window（默认）/ any / off
+localStorage.setItem('dsh-boot-compass:replaymin', 5000)   // 离开多久才算「重新打开」，默认 1000
 ```
 
 - `mode` 只认 `'off'`；设成别的值等于没设。
 - `theme` 只认 `'light'` / `'dark'`，其它值回退到跟随系统。
 - `total` 只认 `800`–`12000` 之间的数，**超出范围会被忽略**（退回默认 3000），不会报错。
+- `replay` 只认 `'window'` / `'any'` / `'off'`：`'window'` 是默认的精确判定；
+  `'any'` 退回纯网页规则（**被盖住也会重播**，非 Windows 上想要这个效果就用它）；
+  `'off'` 只播开机那一次。
+- `replaymin` 是重播门槛（毫秒），`0`–`600000`，默认 `1000`。
+
+想立刻看效果，不用反复关窗：控制台里 `__dshBoot.replay()` 直接播一遍。
+`__dshBoot.stats()` 会告诉你一共播了几次、上一次因为什么、宿主那边答了什么。
 
 ## 减弱动效
 
@@ -101,7 +141,7 @@ localStorage.setItem('dsh-boot-compass:total', 2000)     // 全片时长，800�
 双击 [`tools/preview.html`](tools/preview.html)。
 
 单文件、零依赖，里面就是宿主侧真实注入的那两行，一个字没改。
-点一下就能试跳过。
+点一下就能试跳过。加 `?replay=1` 还能用一个假的宿主把重播判定跑起来。
 
 ## 为什么非得做成宿主侧插件
 

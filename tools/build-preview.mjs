@@ -14,18 +14,32 @@
  *   ?delay=5000   hold the card for 5s -> the gate freezes on the HOLD frame
  *   ?theme=light  force the light theme
  *   ?mode=off     write the off switch, then reload to check a plain boot
+ *   ?replay=1     stub the window route, so the replay trigger can be driven
+ *                 from the console (window.__MOCK) without the desktop shell
  *
- *   node tools/build-preview.mjs
+ * The fake context also answers ctx.inject, so the host's route is registered and
+ * its payload checked here rather than only on a real machine.
+ *
+ *   node tools/build-preview.mjs [stem]
  */
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { apply } from '../lib/index.js'
+import { apply, WINDOW } from '../lib/index.js'
 
 const rows = []
+const routes = new Map()
+const scoped = {
+  effect(fn) { const dispose = fn(); return () => { dispose?.() } },
+  webServer: {
+    register(route) { routes.set(route.path, route); return () => routes.delete(route.path) },
+  },
+}
 apply({
   on(event, handler) {
     if (event === 'webserver/index-inject') handler(rows)
   },
+  effect(fn) { fn(); return () => {} },
+  inject(_deps, callback) { callback(scoped) },
 })
 
 const kinds = rows.map((r) => r.kind).join(', ')
@@ -42,6 +56,18 @@ const iifeAt = script.text.indexOf('(function ()')
 if (!(cssAt === 0 && htmlAt > cssAt && iifeAt > htmlAt)) {
   throw new Error('asset globals must be assigned before the boot IIFE')
 }
+// The replay route must exist and must answer JSON even where no watcher can be
+// built -- the page has to be able to tell "no" from "no answer".
+const route = routes.get(WINDOW.path)
+if (route === undefined || route.kind !== 'exact') {
+  throw new Error(`apply() did not register ${WINDOW.path} as an exact route (got: ${[...routes.keys()].join(', ')})`)
+}
+let payload = null
+route.handler({}, { writeHead() {}, end(text) { payload = JSON.parse(text) } })
+if (payload === null || typeof payload.ok !== 'boolean') {
+  throw new Error(`window route did not answer a JSON object with .ok (got: ${JSON.stringify(payload)})`)
+}
+console.log(`route       : ${WINDOW.path} -> ${JSON.stringify(payload)}`)
 
 const html = `<!doctype html>
 <html lang="zh-CN">
@@ -120,6 +146,20 @@ ${style.text}
   if(q.get('mode')==='off'){ try{localStorage.setItem('dsh-boot-compass:mode','off')}catch(e){} }
   else { try{localStorage.removeItem('dsh-boot-compass:mode')}catch(e){} }
   var th=q.get('theme'); try{ if(th) localStorage.setItem('dsh-boot-compass:theme',th); else localStorage.removeItem('dsh-boot-compass:theme') }catch(e){}
+  // ?replay=1 用一个脚本化的"宿主"顶掉真正的窗口路由：桌面壳不在场时，重播判定
+  // 仍然可以被完整驱动（window.__MOCK 改状态，visibilitychange 叫醒它）。
+  var rp=q.get('replay');
+  if(rp==='1'||rp==='any'||rp==='win'){
+    try{ localStorage.setItem('dsh-boot-compass:replay', rp==='any'?'any':'window') }catch(e){}
+    window.__MOCK={ok:true,visible:true,iconic:false,epoch:0,kind:null,at:0,hiddenFor:0};
+    var real=window.fetch&&window.fetch.bind(window);
+    window.fetch=function(url,init){
+      if(String(url).indexOf('/__boot-compass/window')===0){
+        return Promise.resolve(new Response(JSON.stringify(window.__MOCK),{status:200,headers:{'content-type':'application/json'}}));
+      }
+      return real?real(url,init):Promise.reject(new Error('no fetch'));
+    };
+  } else { try{ localStorage.removeItem('dsh-boot-compass:replay') }catch(e){} }
   var card=document.querySelector('[data-dsh-boot]');
   setTimeout(function(){
     if(card&&card.parentNode) card.parentNode.removeChild(card);
