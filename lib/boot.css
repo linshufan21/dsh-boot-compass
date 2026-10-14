@@ -108,8 +108,7 @@ body{
   animation-timing-function: var(--ease,linear);
 }
 
-/* ============================ 舞台 ============================ */
-/* contain: the splash lives in a shadow root hanging off <html>, and the whole
+/* ============================ 舞台 ============================ *//* contain: the splash lives in a shadow root hanging off <html>, and the whole
    DSH app sits behind it in the same document. Without containment every
    invalidated gradient inside the splash can walk up to the document root and
    make the host re-evaluate. `overflow:hidden` already clips, so paint
@@ -373,15 +372,25 @@ body{
 @keyframes bezelTurn{from{transform:rotate(0deg)}to{transform:rotate(46deg)}}
 .bezel-turn line{stroke:var(--c-cross);stroke-linecap:round}
 
-.ring-dim{fill:none;stroke:var(--c-ring);stroke-width:1.8;stroke-opacity:.20}
+/* 罗盘环：整条时间线把 stroke-opacity 从 .20 抬到 .52。
+   stroke-opacity 是 paint 属性，每帧重绘；而这是一条很长的圆环。
+   元素级 opacity 在同一根单笔画圆环上结果等价（没有自交、没有 fill），
+   但走的是合成器，不再重绘。 */
+.ring-dim{fill:none;stroke:var(--c-ring);stroke-width:1.8;opacity:.20}
 .ring-dim.a{animation-name:ringOpen;--d:0;--dur:1;--ease:var(--e-smooth)}
-@keyframes ringOpen{0%{stroke-opacity:.20}30%{stroke-opacity:.52}100%{stroke-opacity:.52}}
+@keyframes ringOpen{0%{opacity:.20}30%{opacity:.52}100%{opacity:.52}}
 
+/* 扫描弧：dash 长度恒定，全程正好跑满一整圈（2π×68 = 427.257 = dasharray 总和）。
+   所以"减少 dashoffset"和"整体旋转一圈"是同一条轨迹 —— 但 dashoffset 在 Blink 里是
+   SVG 布局属性：动它会让整个 svg.mark（40 多个元素）每帧重新布局，实测 6x 节流下
+   每次 7.6ms，是掉帧的主因。改成 transform 后走合成器，布局归零。
+   transform-origin 的写法与 .bezel-turn / .orbit-turn 保持一致。 */
 .arc-scan{fill:none;stroke:var(--c-scan);stroke-width:3;stroke-linecap:round;
-          stroke-dasharray:84 343.257;stroke-dashoffset:0;opacity:0}
+          stroke-dasharray:84 343.257;stroke-dashoffset:0;opacity:0;
+          transform-box:view-box;transform-origin:100px 100px;transform:rotate(-90deg)}
 .arc-scan.a{animation-name:scan;--d:.09;--dur:.23;--ease:linear}
-@keyframes scan{0%{opacity:0;stroke-dashoffset:0}7%{opacity:1}84%{opacity:1}
-                100%{opacity:0;stroke-dashoffset:-427.257}}
+@keyframes scan{0%{opacity:0;transform:rotate(-90deg)}7%{opacity:1}84%{opacity:1}
+                100%{opacity:0;transform:rotate(270deg)}}
 
 /* 外圈进度弧：装载阶段 0→100%。
    必须用 linear —— 否则缓动会让弧长与百分比数字对不上（数字 40% 弧却画到 53%）。 */
