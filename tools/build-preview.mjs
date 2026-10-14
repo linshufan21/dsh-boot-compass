@@ -152,7 +152,9 @@ ${style.text}
 </html>
 `
 
-const out = fileURLToPath(new URL('./preview.html', import.meta.url))
+// Optional output stem, so the same builder can emit an A/B variant (e.g. one with
+// the promotion hints restored) for interleaved measurement.
+const out = fileURLToPath(new URL(`./${process.argv[2] ?? 'preview'}.html`, import.meta.url))
 writeFileSync(out, html, 'utf8')
 console.log(`rows        : ${kinds}`)
 console.log(`style row   : ${style.text.length} B`)
