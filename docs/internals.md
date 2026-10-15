@@ -31,19 +31,37 @@ index.html —— 早于构建那张卡的 shell 内核。
 ## 安装
 
 **桌面客户端独占管理 `desktop` profile** —— `dsh plugin` 内部就是
-`profile.toLowerCase() === "desktop"` 直接拒绝。所以本机要在
-**设置 → 插件**里安装：
-
-```bash
-npm pack                       # 在包目录里产出 dsh-boot-compass-0.1.0.tgz
-```
-然后把 tarball 在「设置 → 插件」里装上，重启客户端。
-
-非 desktop 的 profile 可以用 CLI：
+`profile.toLowerCase() === "desktop"` 直接拒绝（`@deepseek-ai/dsh/lib/bin.js`），
+报的是 `profile "desktop" is managed exclusively by the Electron application`。
+所以桌面壳只有两条路：**设置 → 插件**里装，或在该 profile 目录里手工 `pnpm add`。
+npm 上有正式包（`dsh-boot-compass`），桌面上直接写包名即可；
+非 desktop 的 profile 走 CLI：
 
 ```bash
 dsh plugin --profile <name> add dsh-boot-compass
 ```
+
+### 安装期有两道闸门（pnpm 11.7.0，本机逐条实测）
+
+pnpm 的「新版本冷静期」`minimumReleaseAge` 会按住刚发布的版本，让**不带版本号**的安装
+静默落到旧版 —— exit 0、无告警。在 profile 的副本上量到的：
+
+| 实验（profile 目录里 `pnpm add dsh-boot-compass`） | 结果 |
+|---|---|
+| 干净目录、豁免表里没有这个包 | `+ ^0.2.0` |
+| 豁免表首条是 `dsh-boot-compass@0.1.0`（本机原始状态） | `+ ^0.1.0` |
+| 首条改成合并式 `@0.1.0 \|\| 0.1.1 \|\| 0.1.2` | `+ ^0.1.2` |
+| 两条规则：`@0.1.2` 在前、`@0.2.0` 在后 | `+ ^0.1.2`（**后面那条被吃掉**） |
+| 只写 `@0.2.0` | `+ ^0.2.0` |
+| 带 `--config.minimumReleaseAge=6` | `+ ^0.2.0` |
+| 带 `--config.minimumReleaseAge=0` | `+ ^0.1.0`（**0 等于没设**） |
+| 写死版本 `add dsh-boot-compass@0.2.0` | `+ 0.2.0`，锁 0.2.0，且 pnpm 自动把该版本追加进豁免表 |
+
+三件事由此确定：窗口是 **24 小时**（profile 的 `.plugin-manager/logs/*/pnpm.log` 里
+cutoff 正好是"当时 − 24h"，且 `pnpm config get minimumReleaseAge` 返回 `undefined`
+也照样生效）；`minimumReleaseAgeExclude` 对同一个包名**只读第一条规则**（用户装的
+`dshmarket` 把这条记成 issue #732，它的代码注释就写着 "pnpm honours only the FIRST
+per name"）；想立刻装新版，唯一的通用解法是**把版本号写死**。
 
 ## 开关与调节
 
@@ -218,7 +236,7 @@ node tools/diag.mjs                 # 同上，但把 DOM 状态打印进页面�
 | ↑ 那一帧的归属 | `animdump.mjs` 对比两版动画表 | 106 条动画，**集合、顺序、delay、duration、iterations、冻结 currentTime 全部相同** —— 差异是光栅化，不是行为 |
 | **重播与首播一致** | 同一会话内交替导航，同为 p=0.50 | **0 个像素不同**，动画表同样 106/106 全等 |
 | **触发判定** | `replay-logic.mjs`，10 项 | 新鲜 epoch 才播；同 epoch（被盖住）不播；过期/过短不播；`ok:false` 记为不可用；`any` 与 `off` 各按定义 |
-| 真机安装 | 覆盖进 `%DSH_HOME%\profiles\desktop\node_modules\dsh-boot-compass\lib\`，重启客户端 | 见 README 安装段 |
+| 真机安装（走 registry） | `pnpm add dsh-boot-compass@0.2.0` 装进 desktop profile，核对包内文件与锁 | `package.json` `^0.2.0`；锁里的 integrity 与 registry 上 0.2.0 逐字相同；`lib/window.js` 在场（装 0.1.0 时它不存在） |
 
 最后两行是 A/B：同一个"应用迟迟不就绪"的场景，不点就等，点一下就立刻交接。
 

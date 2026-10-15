@@ -14,26 +14,41 @@ DSH 启动时会先画一张「HARNESS 正在加载插件…」的卡。这个�
 
 ## 装
 
-**桌面客户端** —— 侧栏 → **插件** → **添加插件**，粘贴这一行：
+**桌面客户端** —— 侧栏 → **插件** → **添加插件**，这一行就行：
 
 ```
-github:linshufan21/dsh-boot-compass
+dsh-boot-compass
 ```
+
+（`github:linshufan21/dsh-boot-compass` 也可以 —— 那条直接去 GitHub 取，不经过 registry。）
 
 装完点**立即启用**，然后**完全退出客户端再打开**。
 开机动画是在启动时注入页面的，刷新浏览器看不到。
 
-**其它 profile** 用命令行：
+**其它 profile** 用命令行（`desktop` 除外 —— 宿主 CLI 会直接拒绝它，原文是
+`profile "desktop" is managed exclusively by the Electron application`）：
 
 ```bash
-dsh plugin --profile <name> add github:linshufan21/dsh-boot-compass
+dsh plugin --profile <name> add dsh-boot-compass
 ```
 
 这条路会顺带把这个组合包写进 profile 的 `dsh.profile.bundles`（也就是启用），
 重启那个 profile 即可看到。
 
-> **为什么不能写 `dsh plugin add dsh-boot-compass`** —— 这个包还没发到 npm。
-> 包名要去 registry 查名字，查不到；GitHub 地址是直接去取，所以能用。
+> **发版后 24 小时内，名字后面要带上确切版本号。**
+> pnpm 的「新版本冷静期」（`minimumReleaseAge`）会把刚发出去的版本按住，而一个不带版本号的
+> 安装会**静默**落到旧版 —— exit 0、不报错，看起来就像"我明明装的是新版"。本机实测
+> （pnpm 11.7.0，profile 目录里）：
+>
+> ```bash
+> pnpm add dsh-boot-compass        # + dsh-boot-compass ^0.1.0   ← 旧版，一声不吭
+> pnpm add dsh-boot-compass@0.2.0  # + dsh-boot-compass 0.2.0    ← 写死版本才对
+> ```
+>
+> 还有一层容易踩的：`minimumReleaseAgeExclude` 里**同一个包名只认第一条规则**，
+> 同一个包的多行必须合并成一行（`dsh-boot-compass@0.1.0 || 0.1.1 || 0.1.2 || 0.2.0`），
+> 否则后面几行等于不存在 —— 这正是"装来装去都是 0.1.0"的成因。
+> 想不写版本号就装新版：等满 24 小时，或在插件页用「仍然安装」。
 
 要求 DSH `>= 0.2.0-rc.1`。零运行时依赖，不依赖任何 `@deepseek-ai/*` 包。
 
