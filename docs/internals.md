@@ -43,25 +43,33 @@ dsh plugin --profile <name> add dsh-boot-compass
 
 ### 安装期有两道闸门（pnpm 11.7.0，本机逐条实测）
 
-pnpm 的「新版本冷静期」`minimumReleaseAge` 会按住刚发布的版本，让**不带版本号**的安装
-静默落到旧版 —— exit 0、无告警。在 profile 的副本上量到的：
+pnpm 的「新版本冷静期」`minimumReleaseAge` 会按住刚发布的版本，而**不带版本号**的安装会
+静默落到旧版 —— exit 0、无告警。在自足目录里逐条量到的（pnpm 11.7.0，同一台机器）：
 
-| 实验（profile 目录里 `pnpm add dsh-boot-compass`） | 结果 |
+| 实验（目录里 `pnpm add dsh-boot-compass`） | 结果 |
 |---|---|
-| 干净目录、豁免表里没有这个包 | `+ ^0.2.0` |
+| 干净目录、豁免表里没有这个包、也没显式配窗口 | `+ ^0.2.1`（直接拿最新 —— 窗口并不默认生效） |
+| 显式 `minimumReleaseAge: 1440`、豁免表里没有这个包 | `ERR_PNPM_NO_MATURE_MATCHING_VERSION` —— **硬报错，不静默** |
 | 豁免表首条是 `dsh-boot-compass@0.1.0`（本机原始状态） | `+ ^0.1.0` |
 | 首条改成合并式 `@0.1.0 \|\| 0.1.1 \|\| 0.1.2` | `+ ^0.1.2` |
 | 两条规则：`@0.1.2` 在前、`@0.2.0` 在后 | `+ ^0.1.2`（**后面那条被吃掉**） |
 | 只写 `@0.2.0` | `+ ^0.2.0` |
-| 带 `--config.minimumReleaseAge=6` | `+ ^0.2.0` |
-| 带 `--config.minimumReleaseAge=0` | `+ ^0.1.0`（**0 等于没设**） |
+| 首条 `@0.1.0` + `--config.minimum-release-age=6`（6 分钟窗口） | `+ ^0.2.0`（0.2.1 太新，退到 0.2.0） |
+| 首条 `@0.1.0` + `--config.minimum-release-age=0` | `+ ^0.2.1`（**窗口整个关掉**；驼峰拼写 `minimumReleaseAge` 同样有效） |
 | 写死版本 `add dsh-boot-compass@0.2.0` | `+ 0.2.0`，锁 0.2.0，且 pnpm 自动把该版本追加进豁免表 |
 
-三件事由此确定：窗口是 **24 小时**（profile 的 `.plugin-manager/logs/*/pnpm.log` 里
-cutoff 正好是"当时 − 24h"，且 `pnpm config get minimumReleaseAge` 返回 `undefined`
-也照样生效）；`minimumReleaseAgeExclude` 对同一个包名**只读第一条规则**（用户装的
-`dshmarket` 把这条记成 issue #732，它的代码注释就写着 "pnpm honours only the FIRST
-per name"）；想立刻装新版，唯一的通用解法是**把版本号写死**。
+由此确定三件事：
+
+1. **让这台机器静默降级的，是豁免表里这个包的那条规则，不是"默认就有 24 小时窗口"** ——
+   这个包不在豁免表里时裸装直接拿最新；显式配了窗口而没有豁免时 pnpm 反而**硬报错**。
+   窗口本身是 24 小时：profile 的 `.plugin-manager/logs/*/pnpm.log` 里 cutoff 正好是
+   "当时 − 24h"，而 `pnpm config get minimumReleaseAge` 返回 `undefined`。
+2. `minimumReleaseAgeExclude` 对同一个包名**只读第一条规则**（用户装的 `dshmarket` 把这条
+   记成 issue #732，它的代码注释就写着 "pnpm honours only the FIRST per name"），
+   所以同一个包的多行必须合并成一行。
+3. 想立刻装新版有两条路：**把版本号写死**，或者用 dshmarket 更新路径的那条一次性开关
+   `--config.minimum-release-age=0`（它的常量名就叫 `RELEASE_AGE_OVERRIDE`）。
+   "等满 24 小时"同样有效 —— 版本成熟后窗口不再挡它。
 
 ## 开关与调节
 
