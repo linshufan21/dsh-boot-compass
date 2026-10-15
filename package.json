@@ -1,6 +1,6 @@
 {
   "name": "dsh-boot-compass",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "「点火 / 校准」启动动画：在 DSH 画出加载卡之前接住首帧，播完七段罗盘序列再交接给主界面；关窗再从托盘打开还会重播一遍。纯代码，零视频资源。",
   "type": "module",
   "main": "./lib/index.js",
