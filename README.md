@@ -1,19 +1,19 @@
 # dsh-boot-compass
 
-**开机那 3 秒，也值得设计一下。**
+**开机那 4.5 秒，也值得设计一下。**
 
 DSH 启动时会先画一张「HARNESS 正在加载插件…」的卡。这个插件在它出现之前就接住画面，
-放一段七拍的罗盘序列，播完再交给主界面。纯代码，零视频资源，零运行时依赖。
+放一段五阶段的罗盘序列，播完再交给主界面。纯代码，零视频资源，零运行时依赖。
 
 - 首帧是一条**纯 CSS 覆盖层** —— 样式行一被解析就已经在玻璃上，那张加载卡从头到尾没机会出现
 - **关掉窗口再从托盘打开，动画会重播一遍**；alt-tab 切回来不会（Windows，见下）
 - 点一下屏幕直接进主界面，仍然走完释放和交接（约 0.6 秒）
 - 只动 `transform` / `opacity` / `filter`；系统开了「减弱动效」会自动降级
 
-![锁定拍：罗盘合拢，HUD 读配置](assets/screenshot-1.png)
+![稳定定格：交接前的完整启动界面](https://raw.githubusercontent.com/linshufan21/dsh-boot-compass/main/assets/screenshot-1.png)
 
 > A full-screen boot splash for DSH: a CSS cover lands before the loading card is
-> painted, a seven-beat compass sequence plays, then the app fades up from inside it.
+> painted, a five-stage compass sequence plays, then the app fades up from inside it.
 
 ## 它是什么
 
@@ -25,19 +25,19 @@ DSH 的启动链上有一段没人负责的时间：文档开始解析 → shell
 - 首帧是**纯 CSS 覆盖层**（`html.dshboot-on::before`）。它比任何客户端插件都早，
   因为它是**被服务的文档本身**的一部分；
 - 之后整个启动画面挂在 **shadow root** 里，不碰 DSH 的 DOM，也不跟任何样式打架；
-- 播完七拍就把画面交出去 —— 主界面早就绪就立刻交接，没就绪就停在「静止」那一拍等。
+- 播完五阶段就把画面交出去 —— 主界面早就绪就立刻交接，没就绪就停在「静止」那一拍等。
 
 ```
 服务 HTML ─► 解析 <head> ─► shell 启动 ─► 组合加载插件 ─► 主界面就绪
                  │                                          ▲
                  └── 本插件在这里就位（纯 CSS 覆盖层）────────┘
-                     七拍播放中；应用早就绪就立刻交接
+                     五阶段播放中；应用早就绪就立刻交接
 ```
 
 它**不做**这些：没有设置界面、不注册客户端模块、不改主题、不装任何依赖、不读任何用户数据。
 把它关掉，DSH 就是原本的样子。
 
-实现细节（就绪 gate 为什么卡在 0.76、为什么资产要拼进同一个 script 行、
+实现细节（就绪 gate 为什么卡在 0.84、为什么资产要拼进同一个 script 行、
 窗口状态为什么必须问操作系统）都在 [docs/internals.md](docs/internals.md)。
 
 ## 装
@@ -81,10 +81,10 @@ dsh plugin --profile <name> add dsh-boot-compass
 
 想让它更稳：把 `total` 调短、直接点一下跳过、或者干脆 `mode = 'off'` 关掉（见「五个开关」）。
 
-## 七拍
+## 五阶段
 
 ```
-引导 ── 扫描 ── 装载 ── 锁定 ── 静止 ── 释放 ── 退场
+核心唤醒 ── 环形展开 ── 轨道汇聚 ── 能量同步 ── 稳定定格
 ```
 
 一台罗盘从**绷紧**开始：指针被反向压住。
@@ -94,18 +94,21 @@ dsh plugin --profile <name> add dsh-boot-compass
 接着指针被放开 —— 甩过正北、过冲、回摆、停住。
 **停住那一下是故意的**：一直动的东西读起来是"还在忙"，停一下才像"到位了"。
 
-最后冲击波向外投出，整个画面穿过镜头离开，主界面从里面长出来。
+最后一拍是**稳定定格**：整幅画面停住不动，等主界面接过去 —— 不再有从前的「冲击波把画面推出镜头」。
+**停住是故意的**：一直动的东西读起来是「还在忙」，停下来才像「到位了」。
 
-| 装载：亮弧扫过刻度 | 释放：冲击波向外投出 |
+| 汇聚：轨道收拢、外层亮弧合圆 | 同步：指针解扣、整盘提亮 |
 | --- | --- |
-| ![装载拍](assets/screenshot-2.png) | ![释放拍](assets/screenshot-3.png) |
+| ![汇聚拍](https://raw.githubusercontent.com/linshufan21/dsh-boot-compass/main/assets/screenshot-2.png) | ![同步拍](https://raw.githubusercontent.com/linshufan21/dsh-boot-compass/main/assets/screenshot-3.png) |
 
 浅色主题下是同一套编排，只是底色换成 `#F6F7FB`（`assets/screenshot-4.png`，也在
-`screenshots.json` 里）。整帧分镜十二格：
+`screenshots.json` 里）。五阶段十格分镜（下排是冻结点 / 交接 / 减弱动效 / 浅色，全部真实冻帧）：
 
-![七段分镜](assets/storyboard.png)
+![五阶段分镜](https://raw.githubusercontent.com/linshufan21/dsh-boot-compass/main/assets/storyboard.png)
 
-## 嫌 3 秒长？
+<!-- 图片用绝对 raw 地址：npm 包只发 lib/README/配置，assets 不进包，相对路径在 npm 页面上会 404。改回来之前先想清楚这一点。 -->
+
+## 嫌 4.5 秒长？
 
 **点一下屏幕就直接进主界面**，仍然走完释放和交接，约 0.6 秒。
 `Esc` / `空格` / `Enter` 也行。
@@ -161,7 +164,7 @@ localStorage.setItem('dsh-boot-compass:replaymin', 5000)   // 离开多久才算
 
 - `mode` 只认 `'off'`；设成别的值等于没设。
 - `theme` 只认 `'light'` / `'dark'`，其它值回退到跟随系统。
-- `total` 只认 `800`–`12000` 之间的数，**超出范围会被忽略**（退回默认 3000），不会报错。
+- `total` 只认 `800`–`12000` 之间的数，**超出范围会被忽略**（退回默认 4500），不会报错。
 - `replay` 只认 `'window'` / `'any'` / `'off'`：`'window'` 是默认的精确判定；
   `'any'` 退回纯网页规则（**被盖住也会重播**，非 Windows 上想要这个效果就用它）；
   `'off'` 只播开机那一次。
@@ -235,7 +238,7 @@ dsh-boot-compass/
 │   ├── index.js           # 宿主半边：登记注入行 + 注册 /__boot-compass/window
 │   ├── boot.css           # 首帧覆盖层 + 全片样式（--total 是时长的唯一来源）
 │   ├── boot.html          # shadow 树的结构
-│   ├── boot.js            # 页面侧：挂载、七拍时间轴、就绪 gate、重播判定
+│   ├── boot.js            # 页面侧：挂载、五阶段时间轴、就绪 gate、重播判定
 │   └── window.js          # 窗口状态读取（koffi → user32）
 ├── tools/
 │   ├── build-preview.mjs  # 用假 ctx 跑一遍 apply()，产出单文件预览
@@ -261,7 +264,7 @@ dsh-boot-compass/
 `replay` 有没有被设成 `'off'`。控制台 `__dshBoot.stats()` 会直接告诉你上一次为什么没播。
 
 **动画停在半路不动？**
-那是就绪 gate：主界面还没就绪时会停在「静止」那一拍等，最多 12 秒。点一下屏幕就立刻走完。
+那是就绪 gate：主界面还没就绪时会停在「稳定定格」那一阶段等，最多 12 秒。点一下屏幕就立刻走完。
 
 **装了还是旧版？**
 见「更新到新版本」—— 冷静期 + `^0.1.0` 这种 caret 够不到新 minor，都会让不带版本号的安装

@@ -1,7 +1,7 @@
 {
   "name": "dsh-boot-compass",
-  "version": "0.2.2",
-  "description": "「点火 / 校准」启动动画：在 DSH 画出加载卡之前接住首帧，播完七段罗盘序列再交接给主界面；关窗再从托盘打开还会重播一遍。纯代码，零视频资源。",
+  "version": "0.3.0",
+  "description": "「点火 / 校准」启动动画：在 DSH 画出加载卡之前接住首帧，播完五阶段罗盘序列再交接给主界面；关窗再从托盘打开还会重播一遍。纯代码，零视频资源。",
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
@@ -77,7 +77,7 @@
       "id": "boot-splash",
       "kind": "ui",
       "invocation": "Boot the profile's Web GUI and read the first frame from the page: document.documentElement.classList.contains('dshboot-on') on the way in, then #dshboot-host and its shadowRoot's #stage/#boot once parsed. Replay: GET /__boot-compass/window answers {ok, visible, iconic, epoch, kind, at, hiddenFor}; hide the window to the tray and reopen it to see epoch advance.",
-      "expected": "The host half's CSS-only cover lands while <head> is still parsing, so DSH's [data-dsh-boot] card is never visible. The splash then mounts in a shadow root and retires the cover on the same task, plays its seven beats to completion, and releases at the HOLD frame (0.76) only if the app is not yet ready. Reopening a window that was really hidden (tray) or minimized replays the whole sequence; a window that was merely covered by another application does not, and on platforms without a window-state reader the replay is simply absent."
+      "expected": "The host half's CSS-only cover lands while <head> is still parsing, so DSH's [data-dsh-boot] card is never visible. The splash then mounts in a shadow root and retires the cover on the same task, plays its five stages to completion, and releases at the HOLD frame (0.84) only if the app is not yet ready. Reopening a window that was really hidden (tray) or minimized replays the whole sequence; a window that was merely covered by another application does not, and on platforms without a window-state reader the replay is simply absent."
     },
     "evidence": {
       "install": null,

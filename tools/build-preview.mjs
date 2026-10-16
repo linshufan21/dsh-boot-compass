@@ -143,6 +143,8 @@ ${style.text}
 (function(){
   var q=new URLSearchParams(location.search);
   var delay=parseFloat(q.get('delay')); if(!isFinite(delay)) delay=2400;
+  // ?probe=0 收掉底部那行调试实况 —— 拿去给人看动画本身时不该有这行。
+  if(q.get('probe')==='0'){ var pb=document.getElementById('probe'); if(pb) pb.style.display='none'; }
   if(q.get('mode')==='off'){ try{localStorage.setItem('dsh-boot-compass:mode','off')}catch(e){} }
   else { try{localStorage.removeItem('dsh-boot-compass:mode')}catch(e){} }
   var th=q.get('theme'); try{ if(th) localStorage.setItem('dsh-boot-compass:theme',th); else localStorage.removeItem('dsh-boot-compass:theme') }catch(e){}

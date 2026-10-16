@@ -17,7 +17,7 @@ index.html —— 早于构建那张卡的 shell 内核。
 | 行 | 内容 | 作用 |
 |---|---|---|
 | `style` | 407 B | 纯 CSS 覆盖层 `html.dshboot-on::before` + 两个 Desktop 标题栏 token。**不需要 DOM**，所以样式行一被解析就在玻璃上 |
-| `script` | ~44 KB | 把 `boot.css` / `boot.html` 赋成全局，随后挂载到 **shadow root**，并在同一个任务里撤掉覆盖层 |
+| `script` | ~78 KB | 把 `boot.css` / `boot.html` 赋成全局，随后挂载到 **shadow root**，并在同一个任务里撤掉覆盖层 |
 
 资产是在**同一个 script 行**里拼接的，而不是用单独的行：`boot.js` 第一件事就是读那两个
 全局，而 `{kind:'global'}` 行相对于 script 行的渲染位置无法在本包内验证，弄错就是黑屏。
@@ -79,7 +79,7 @@ pnpm 的「新版本冷静期」`minimumReleaseAge` 会按住刚发布的版本�
 |---|---|---|
 | `dsh-boot-compass:mode` | `off` | 完全不注入 —— 覆盖层和启动画面都不出现，直接进 DSH |
 | `dsh-boot-compass:theme` | `light` / `dark` | 强制主题；不设则跟随 `prefers-color-scheme` |
-| `dsh-boot-compass:total` | 毫秒，800–12000 | 覆盖全片时长；不设则用 `boot.css` 里的 `--total`（3000） |
+| `dsh-boot-compass:total` | 毫秒，800–12000 | 覆盖全片时长；不设则用 `boot.css` 里的 `--total`（4500） |
 | `dsh-boot-compass:replay` | `window` / `any` / `off` | 重播策略，默认 `window`（见「重播」） |
 | `dsh-boot-compass:replaymin` | 毫秒，0–600000 | 窗口要离开多久才算「重新打开」，默认 600（见「重播」） |
 
@@ -91,16 +91,16 @@ localStorage.removeItem('dsh-boot-compass:mode')      // 打开
 ```
 
 **总时长只有一个来源**：`lib/boot.css` 里的 `--total`。`boot.js` 从
-`getComputedStyle(host)` 读它，不从常数读 —— 改一处即可，不会出现"改了 3000 但文件里
-还是 2600"这种漂移。
+`getComputedStyle(host)` 读它，不从常数读 —— 改一处即可，不会出现"改了 4500 但文件里
+还是 3000"这种漂移。
 
 ## 跳过：点一下直接进主界面
 
 **点屏幕任意处**（或 `Esc` / `空格` / `Enter`）立刻进入主界面。
 
-它不是硬切，而是**把整条时间轴整体前推到 0.80（释放点）**：`--t0` 是 `.a` 的
+它不是硬切，而是**把整条时间轴整体前推到 0.90（释放点）**：`--t0` 是 `.a` 的
 `animation-delay` 里被减掉的那一项，所以给它加一个增量就等于把**所有**动画同时前推，
-JS 时钟再重新锚定对齐。因此冲击波、节点飞出、穿镜头、交接这四拍仍然会放完 ——
+JS 时钟再重新锚定对齐。因此冲击波、节点外弹归位、轻推近、交接这几拍仍然会放完 ——
 约 0.6 秒，看起来像一个有意的快退，而不是画面被掐掉。
 
 点击监听挂在 `window` 的捕获阶段，而不是 host 上：host 是
@@ -123,7 +123,7 @@ window.__dshBoot.stats()    // { plays, replays, last, epoch, hiddenFor, hostOk,
 
 ## 就绪 gate
 
-播放 0 → 0.76 是**无条件**的。到 0.76 时：
+播放 0 → 0.84 是**无条件**的。到 0.84 时：
 
 * 已就绪 → 一路播到 1.00，然后交接。这是常态。
 * 未就绪 → 在 HOLD 帧冻结（`--ps: paused` 写在 **host 的行内样式**上），
@@ -134,8 +134,9 @@ window.__dshBoot.stats()    // { plays, replays, last, epoch, hiddenFor, hostOk,
 `[data-dsh-boot]` 出现过又消失（应用已挂载）→
 那张卡丢掉了 `[data-dsh-boot-spinner]`（卡自己进了失败态，页面必须可读）。
 
-**gate 点是 0.76 而不是 0.80**：0.74–0.80 是 HOLD，这一整段里没有任何元素在动，
-所以冻结它不会有任何一帧被切在半途。
+**gate 点是 0.84 而不是 0.94**：0.84–0.94（约 450 ms）里没有任何元素在动，
+冻结它不会把任何一帧切在半途；真正的收尾动画（0.94–1.00 的轻推近 + 淡出）
+必须等放行之后才开始，所以冻结点只能落在它之前。
 
 ## 重播：网页问不出来的问题，去问操作系统
 
@@ -251,3 +252,24 @@ node tools/diag.mjs                 # 同上，但把 DOM 状态打印进页面�
 ## 许可
 
 MIT
+
+---
+
+## 五阶段改版（2026-10-16）之后的复测
+
+上面「验证过的部分」那张表里的数字属于 0.2.2 时代（三秒、七拍、gate 0.76、
+106 条动画），是当时的事实，**保留不改**。五阶段改版后的复测记在这里：
+
+| 项 | 怎么验的 | 结果 |
+|---|---|---|
+| 确定性 | `_shoot/shoot.mjs` 同一份代码拍两遍（1600×900，10 帧） | **10/10 逐位相同** |
+| 重放判定 | `_shoot/replay-logic.mjs` | **11/11 通过** |
+| 对比度（深浅两套主题） | `_tools/_contrast.py` 解析令牌并按 alpha 合成 | **全部达标**（浅色侧修了 6 处） |
+| 3D 分层是否真的生效 | `_shoot/depth-probe.mjs` 读计算样式与 rect | 图层链 `preserve-3d` 完好；`#bg`/`.cross` 在相机推近（`.stack` +11.27%）时宽度变化 **0.00%** |
+| 伪元素的 Z 是否参与投影 | `_shoot/depth-verify.mjs` 对照实验 | **不参与**：`translateZ` 改成 0 或 ±600 画面逐位相同；真实元素的 Z 正常（`.core` 给 Z=300 后 360→491 px） |
+| 注入成本 | `build-preview.mjs` | `style` 407 B、`script` 80,084 B（0.2.2 基线 59,053 B） |
+| 视觉抽查 | 全帧 + 定格帧人工看 | 定格帧同心、四角镜像、无残余动效；倾斜轨道收在画面内 |
+| **减弱动效真的减了吗** | `_shoot/rm-check.mjs`：CDP `Emulation.setEmulatedMedia` 把 `prefers-reduced-motion` 真的切成 `reduce` | **原先没减** —— 114 条动画里 105 条照跑（原因见 `design-notes.md` §1.4：`.a{animation-name:none}` 被复合选择器压住、`#bg` 被 ID 规则压住）。修完：6 个进度上**零插值**、相机与远场压平、轨道保留各自倾角、时间轴仍收敛并交接 |
+| 减弱动效修复没有伤到正常路径 | 改动前后各拍 10 帧 | **10/10 逐位相同** |
+
+脚手架都在工作区的 `_tools/` 与 `_shoot/`，不随包发布。

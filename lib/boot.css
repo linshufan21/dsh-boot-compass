@@ -31,12 +31,15 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 :host{
-  --e-snap:   cubic-bezier(.2,0,0,1);
-  --e-smooth: cubic-bezier(.4,0,.2,1);
-  --e-bouncy: cubic-bezier(.34,1.56,.64,1);
+  /* 缓动命名对齐 Material 3 的 token 体系，出处与取舍见 docs/design-notes.md §1.2 */
+  --e-snap:   cubic-bezier(.2,0,0,1);        /* M3 standard */
+  --e-smooth: cubic-bezier(.4,0,.2,1);       /* M3 legacy：留给扫描/排版这类中性运动 */
+  --e-bouncy: cubic-bezier(.34,1.56,.64,1);  /* back-out 过冲 */
   --e-gentle: cubic-bezier(.4,0,.6,1);
-  --e-enter:  cubic-bezier(0,0,.2,1);        /* 纯 ease-out，入场 */
-  --e-exit:   cubic-bezier(.4,0,1,1);        /* 纯 ease-in，退场（加速离开） */
+  --e-enter:  cubic-bezier(.23,1,.32,1);     /* 强 ease-out 入场（原 legacy-decelerate 0,0,.2,1 起步太钝） */
+  --e-exit:   cubic-bezier(.3,0,1,1);        /* M3 standard-accelerate：加速离开（原 .4 只是更钝的同一个家族） */
+  /* 备查：M3 emphasized 那一对 (.05,.7,.1,1) / (.3,0,.8,.15)。前者在 5% 处就跑到 0.7，
+     只适合"大范围空间转场"；用在 4.5s 的相机推拉或字标升起上会一上来就撞到位，故未采用。 */
 
   --total:3000;                 /* 设计总时长 ms —— 唯一的来源。滑杆与读数都从它推导 */
   --speed:1;
@@ -257,8 +260,8 @@ body{
       rgba(var(--c-radar),0) 252deg,
       rgba(var(--c-radar),.07) 300deg,
       rgba(var(--c-radar),.20) 340deg,
-      rgba(var(--c-radar),.44) 356deg,
-      rgba(var(--c-radar),.66) 360deg);
+      rgba(var(--c-radar),.32) 356deg,
+      rgba(var(--c-radar),.46) 360deg);
   -webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 6%,#000 30%,#000 58%,transparent 88%);
           mask-image:radial-gradient(circle at 50% 50%,transparent 6%,#000 30%,#000 58%,transparent 88%)}
 /* 雷达覆盖 扫描+装载 两段（.09–.62），只转 transform，可合成 */
@@ -271,7 +274,7 @@ body{
       rgba(var(--c-radar),0) 0deg,
       rgba(var(--c-radar),0) 300deg,
       rgba(var(--c-radar),.10) 350deg,
-      rgba(var(--c-radar),.34) 360deg);
+      rgba(var(--c-radar),.26) 360deg);
   -webkit-mask-image:radial-gradient(circle at 50% 50%,transparent 4%,#000 40%,transparent 92%);
           mask-image:radial-gradient(circle at 50% 50%,transparent 4%,#000 40%,transparent 92%)}
 .radar.r2.a{animation-name:radar2;--d:.09;--dur:.53;--ease:linear}
@@ -495,6 +498,28 @@ body{
 /* ---------- 减弱动效：不跨帧，只交叉淡入。改用真实媒体查询 ---------- */
 @media (prefers-reduced-motion: reduce){
   .a{animation-name:none}
+  /* ⚠ 特异性陷阱：上面那条 `.a{animation-name:none}` 打不过
+     `.wm-i.a{animation-name:wmIn}` 这类复合选择器（0,1,0 vs 0,2,0），
+     所以它一直是空转的 —— 实测（_shoot/rm-check.mjs）减弱动效下仍有
+     105/114 条动画在跑，画面与正常帧几乎一致。
+     真正管用的是下面这条：把动画时长压到 1ms。`.a` 自带 fill-mode:both，
+     于是每个元素在 t=0 到自己的 --d 之间显示 from 态、到点后**直接出现在终态**：
+     没有任何位移/缩放/旋转，却保住了分阶段揭示与交接时序，也不用逐条改写关键帧。
+     不能用 animation-name:none 一刀切 —— 那会让元素停在 CSS 基础态
+     （很多是 opacity:0），整个启动画面会变黑。 */
+  .a{animation-duration:1ms}
+  /* 交接时的淡出不跟着一起瞬时：调研口径是「减运动，不减反馈」，一刀切会把
+     交接变成硬切。用复合选择器 .x.a 才能赢过上面那条 .a（0,2,0 > 0,1,0）。
+     --dur 的单位是「speed 基准」（1 = 1000ms），.04 在 4.5s 下就是 180ms。 */
+  .veil.a,.bg.a,.cross.a,.railwrap.a,.logv.a,.mark.a,.txt.a{
+    animation-duration:calc(.04 * var(--fx) * 1ms)}
+  /* .hud/.skip 换成 rmFade 是本来的设计意图（HUD 一上来就在，只在交接时淡掉），
+     但原来写的是 .hud{...}（0,1,0），被 .hud.a{animation-name:hudLife}（0,2,0）压住 ——
+     同一条规则里连 --d 也必须钉住：拿正常延迟的话 rmFade 会从 t=0 就开始淡，
+     HUD 四角标签将全程不可见。 */
+  .hud.a,.skip.a{animation-name:rmFade;--d:.84;animation-duration:calc(.04 * var(--fx) * 1ms)}
+  /* 进度指示是功能性信息：减弱动效下不能塌成"一瞬间就 100%"，要看得见它在走 */
+  .pg.a{--d:.30;--dur:.40;animation-duration:calc(.40 * var(--fx) * 1ms)}
   .bg{opacity:1;animation-name:bgOut;--d:.84;--dur:.16;--ease:var(--e-exit)}
   .radar,.radar.r2{opacity:0}
   .radarwrap{opacity:1;transform:none}
@@ -532,5 +557,406 @@ body{
   .mtr i{opacity:.8;transform:scaleX(1)}
   .railwrap{animation-name:railOut;--d:.845;--dur:.155;--ease:var(--e-exit)}
   .bezel-turn{transform:rotate(46deg)}
+  .rail.r::after{animation-name:none;opacity:0}
 
+}
+
+/* ============================================================================
+   v4 视觉增强（2026-10-16）
+   ----------------------------------------------------------------------------
+   叠加层：只改观感与层次，不动任何节拍、时长、顺序、元素个数。
+   每一条都对应一处"看起来廉价 / 尺度不稳 / 信息读不出来"的地方，理由写在注释里。
+   ============================================================================ */
+
+/* --- 1. 尺度：30 帧裁下来最直观的问题就是"空" --------------------------------
+   1280×800 下 --size 只有 296px（37vmin），罗盘不到屏高 40%，四周一大片纯黑。
+   41vmin 抬到 ~328px；文字层同时从 1.26× 放宽到 1.5×，状态行不再顶着省略号。 */
+:host{
+  --size:clamp(196px,41vmin,430px);
+  --radar:min(82vmin,760px);
+}
+.txt{width:min(100%,calc(var(--size)*1.5))}
+
+/* --- 2. 背景纵深：星场 + 一条刻意画出来的行星弧 ------------------------------
+   用户截图里最好看的那条地平线，其实是 .aur .b2 在 1573×1000 那个尺寸下偶然
+   露出来的一角 —— 换个窗口比例就没了（1280×800 的裁帧里根本没有）。这里把它
+   做成有意为之、随视口自适应的一层：一条浅椭圆弧（用 radial-gradient 的细环带
+   画亮边，元素本身只有 36vh 高，栅格很便宜）。星场用三张互质的 tile 叠出来，
+   比 14 个独立 radial 更省，也不会看出网格感。 */
+#bg::before{content:'';position:absolute;inset:0;pointer-events:none;opacity:.8;
+  background-image:
+    radial-gradient(1.5px 1.5px at 30px 40px,var(--c-star),transparent 62%),
+    radial-gradient(1.1px 1.1px at 132px 92px,var(--c-star),transparent 62%),
+    radial-gradient(1.7px 1.7px at 68px 152px,rgba(160,190,255,.5),transparent 62%);
+  background-size:190px 190px,240px 240px,310px 310px}
+/* 几何：椭圆中心压在元素下方 260%、纵横半径 140%×204%，细环带正好落在元素
+   高度 55.6%（视口 84%）那条线上 —— 一条浅弧，像行星地平线而不是直线。84%
+   是关键：再往上（72%）就会横穿日志三行和状态行，读起来像划痕。
+   上沿必须渐隐：不收边就会在元素顶端（36vh 那条线）露出一道横平竖直的色块边界；
+   内侧的光晕只画在椭圆内（=地平线以上），这样"天上有辉光、地面是暗的"能读出来。 */
+#bg::after{content:'';position:absolute;left:-8%;right:-8%;bottom:0;height:36vh;pointer-events:none;
+  background:
+    radial-gradient(140% 204% at 50% 260%,transparent 0 99.15%,rgba(206,236,255,.5) 99.5%,rgba(206,236,255,0) 100%),
+    radial-gradient(140% 204% at 50% 260%,transparent 0 95.6%,rgba(120,170,255,.17) 98.4%,transparent 100%),
+    radial-gradient(140% 204% at 50% 260%,rgba(96,152,255,.16),rgba(40,78,170,.05) 62%,transparent 94%);
+  -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 18%);
+          mask-image:linear-gradient(180deg,transparent 0,#000 18%)}
+:host([data-theme=light]) #bg::before{opacity:.22}
+:host([data-theme=light]) #bg::after{opacity:.35}
+
+/* --- 3. 扫描扇：从"一整片均匀的蓝"改成"前沿一条亮线 + 身后余晖" --------------
+   p=0.34 那一帧的扇形边缘是一刀切的（conic 在 356→360deg 只有 .44→.66，然后
+   戛然而止），看起来像贴了块半透明色纸。雷达的读法应该是前沿亮、身后递减 ——
+   只改色标，不加元素、不加成本。 */
+.radar{background:conic-gradient(from 0deg,
+    rgba(var(--c-radar),0) 0deg,
+    rgba(var(--c-radar),0) 246deg,
+    rgba(var(--c-radar),.045) 288deg,
+    rgba(var(--c-radar),.12) 330deg,
+    rgba(var(--c-radar),.26) 352deg,
+    rgba(var(--c-radar),.52) 357.6deg,
+    rgba(var(--c-radar),.92) 359.4deg,
+    rgba(var(--c-radar),.10) 360deg)}
+
+/* --- 4. 侧栏：没点亮的那几行也要看得见 --------------------------------------
+   .rl 基线 opacity 只有 .16，装载段的 SUBSYSTEM 几乎等于空白（裁帧里像坏了）。
+   抬到 .30，并把 rlIn/rlInR 的 from 同步，否则动画起手会跳一下。 */
+.rail .rl{opacity:.30}
+.rail .rl b{opacity:.72}
+@keyframes rlIn{from{opacity:.30;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@keyframes rlInR{from{opacity:.30;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+
+/* --- 5. BUFFER：从"随机条形码"改成一台电平表 --------------------------------
+   三个信号就够了：① 条内右端亮头（读作电平）② 8px 一道的通道底纹
+   ③ 一条自上而下扫过的读取头（挂在 .rail.r 上，因为 .mtr 是 flex 容器，
+   伪元素会变成第 17 根条）。读取头走的是和 .a 同一套时间轴变量，
+   所以 --t0 的跳过 / --scrub 的拖动都能带上它。 */
+.mtr{border-radius:2px}
+.rail.r::after{content:'';position:absolute;left:0;right:-2px;top:24px;height:14px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(190,220,255,.5),transparent);
+  animation-name:v4head;animation-iteration-count:1;animation-fill-mode:both;
+  animation-timing-function:linear;
+  animation-duration:calc(.34 * var(--fx) * 1ms);
+  animation-delay:calc((.30 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+@keyframes v4head{0%{transform:translateY(0);opacity:0}10%{opacity:.85}90%{opacity:.85}
+                  100%{transform:translateY(126px);opacity:0}}
+
+/* --- 6. 锁定用冷白青：全程蓝，只有"到达"这一下换色 --------------------------
+   原来锁定只靠亮度提高，读起来还是"同一片蓝"。给冲击波、脉冲、两颗轨道节点、
+   中心轴一点冷白青，再让锁定的闪光也偏青白 —— 这是节拍上的"到位"记号。 */
+.shock{stroke:var(--c-lock)}
+.pulse{stroke:var(--c-lock)}
+.node{fill:var(--c-lock)}
+.dot{fill:#fff}
+
+/* --- 7. 文字层次：主标题压住 HUD，跳过提示退到后面 -------------------------
+   HUD 和字标原来同一个亮度档（.42 vs .92 但字小、字距大，视觉重量接近），
+   而 HUD 有四处，抢主标题。把 HUD 压到 .30，跳过提示延后到 38% 且只到 .34。 */
+.wm-i{font-weight:700;letter-spacing:.40em;text-indent:.40em;
+  text-shadow:0 0 18px rgba(120,160,255,.32)}
+.pc{font-size:.94em}
+
+/* ============================================================================
+   v5 · Orbital Intelligence —— 五拍重切 + 设计语言（2026-10-16）
+   ----------------------------------------------------------------------------
+   五拍（都乘以 --total）：S1 核心唤醒 0.00–0.14 ｜ S2 环形展开 0.14–0.36
+                          S3 轨道汇聚 0.36–0.62 ｜ S4 能量同步 0.62–0.84
+                          S5 稳定定格 0.84–1.00
+   ★ 这一段是**编排与观感的唯一真源**：下面的 --d/--dur 覆盖与关键帧重定义都写在旧值
+     之后，按 CSS 层叠生效；上面那些旧数字从此只作历史保留（发布前可择机就地收敛）。
+   硬约束（方案 §1）：不新增 DOM；只动 transform/opacity/filter；辉光按 §2.4 预算表；
+     元素一个不删，只重新分组 + 重定时。
+   ============================================================================ */
+
+/* --- A. 设计令牌：深空黑 × 电光蓝 × 冰川青 ---------------------------------- */
+:host{
+  --total:4500;                    /* 4.5 s —— 唯一时长来源；boot.js 的 TOTAL_FALLBACK 必须同值 */
+  --c-void:#05070D; --c-deep:#0A0E18; --c-panel:#0E1420;
+  --c-stage:#05070D;               /* 舞台底 = 深空黑；cover 同色，交接无缝 */
+  --c-volt:#4D6BFE; --c-volt-hi:#8AA6FF;
+  --c-brand:#4D6BFE;
+  --c-glacier:#7FE6F0;             /* 冰青：只给"到达/同步"用，不做底色 */
+  --c-lock:#7FE6F0; --c-flash:rgba(150,232,244,.30);
+  --c-line:#1B2440; --c-line-hi:#3D5AA8;
+  --c-ui-fg:#DCE6FA; --c-ui-dim:#7C8CB0;
+  --c-ring:rgba(122,150,220,.55);
+  --c-tick:rgba(150,170,225,.45);
+  --c-node:#7FE6F0; --c-mote:rgba(138,178,255,.80);
+  --c-grid:rgba(90,120,200,.070); --c-grid2:rgba(96,130,220,.140);
+  --c-cross:rgba(110,145,235,.26); --c-rule:rgba(110,150,255,.48);
+  --c-radar:77,107,254;
+  --c-star:rgba(186,210,255,.50);
+  --e-orbit:cubic-bezier(.22,.61,.24,1);   /* 长尾收敛：环展开与汇聚 */
+  /* 辉光预算（方案 §2.4）：文字 ≤18px/α.32、核心 ≤24px/α.45、地平线亮边 1px/α.42 */
+  --glow-text:0 0 18px rgba(130,170,255,.32);
+  --glow-core:0 0 24px rgba(127,230,240,.45);
+}
+:host([data-theme=light]){
+  --c-void:#F6F7FB; --c-deep:#EEF1F8; --c-panel:#FFFFFF;
+  --c-stage:#F6F7FB;
+  --c-volt:#2B4FD8; --c-volt-hi:#2B3ED9;
+  --c-brand:#2B3ED9;
+  --c-glacier:#0B6E88; --c-lock:#0B6E88; --c-flash:rgba(255,255,255,.55);
+  --c-line:#D8DEEB; --c-line-hi:#8A9CD2;          /* 2.53:1（结构性细线，装饰） */
+  /* 浅色侧的对比度是按 WCAG 实测调过的（_tools/_contrast.py）：
+     次级文字 #767E93 在白底上只有 4.06:1、冰青只有 4.50:1，都够不到 AA 小字线；
+     细线 .32/.38 的 alpha 在白底上合成出 #B5BCF0 / #AFB6D1（1.7–1.9:1），几乎看不见。
+     现在：文字全部过 4.5:1；纯装饰细线只抬到 2.4–2.6:1（够看清，不做成线框画）。 */
+  --c-ui-fg:#2C3142; --c-ui-dim:#676F82;          /* 4.70:1 on #F6F7FB（最差底） */
+  --c-ring:rgba(43,62,217,.44);
+  --c-tick:rgba(60,75,140,.55);                   /* 2.64:1（装饰） */
+  --c-node:#0B6E88; --c-mote:rgba(60,80,200,.60);
+  --c-grid:rgba(43,62,217,.075); --c-grid2:rgba(43,62,217,.150);
+  --c-cross:rgba(43,62,217,.26); --c-rule:rgba(43,62,217,.50);   /* 2.45:1（装饰） */
+  --c-radar:30,45,200;
+  --c-star:rgba(60,90,190,.35);
+  --glow-text:0 0 16px rgba(60,90,200,.20);
+  --glow-core:0 0 20px rgba(14,124,153,.28);
+}
+
+/* --- B. 五拍重定时：元素一个不删，只改窗口 ----------------------------------
+   左=元素，右=新 --d/--dur，注释里是它落在哪一拍。 */
+/* S1 核心唤醒 */
+.brk.a{--d:.02;--dur:.10}
+.wm-i.a{--d:.04;--dur:.14}
+.rule.a{--d:.08;--dur:.12}
+.inner-fade.a{--d:.08;--dur:.14}
+.inner-turn.a{--d:.08;--dur:.24}
+.dot.a{--d:0;--dur:1}                 /* 两次心跳写在关键帧里（S1 点亮 + S4 同步） */
+/* S1 → S2 */
+.cross .h.a{--d:.10;--dur:.18}
+.cross .edge.a{--d:.12;--dur:.20}
+/* 侧栏标题的 --d 由 boot.js 内联写死（inline style 优先于样式表），这里只管时长 */
+.rail .hd.a{--dur:.14}
+.hline.a{--d:.14;--dur:.20}
+.bezel-turn.a{--d:.16;--dur:.56}
+.cross .rt.a{--d:.18;--dur:.20}
+/* S2 环形展开 → S3 轨道汇聚 */
+.radar.a{--d:.20;--dur:.42}
+.radar.r2.a{--d:.20;--dur:.42}
+.arc-scan.a{--d:.20;--dur:.22}
+.pg.a{--d:.20;--dur:.62}              /* 0.82 处到 100%，与 JS 的 pct 映射同步 */
+.orbit-turn.a{--d:.30;--dur:.54;--ease:var(--e-orbit)}
+.sweep.a{--d:.36;--dur:.26}
+/* S3 → S4 */
+.logi.a{--d:.44;--dur:.34}
+.needle.a{--d:0;--dur:1}              /* 甩过/过冲/回摆改到 0.52–0.64（见关键帧） */
+/* S4 能量同步 */
+.flash.a{--d:.62;--dur:.06}
+.pulse.a{--d:.62;--dur:.06}
+.wm-g.a{--d:.70;--dur:.05}
+.node-fly.a{--d:.66;--dur:.06}        /* 语义改为"外弹一下再归位"，不再飞走 */
+/* 跨全片 */
+.aur .b1{--d:.06;--dur:.86}
+.aur .b2{--d:.10;--dur:.80}
+.aur .b3{--d:.16;--dur:.74}
+/* S5 稳定定格：全部收尾压到 0.94–1.00，只做轻推近 + 淡出（去掉飞离/穿镜头） */
+.cross.a{--d:.94;--dur:.06}
+.bg.a{--d:.94;--dur:.06}
+.railwrap.a{--d:.94;--dur:.06}
+.radarwrap.a{--d:.94;--dur:.06}
+.logv.a{--d:.94;--dur:.06}
+.mark.a{--d:.95;--dur:.05}
+.txt.a{--d:.95;--dur:.05}
+#veil.a{--d:.95;--dur:.05}
+
+/* --- C. 关键帧：定格的收尾 + 五拍的语义重写 --------------------------------- */
+/* 极光：辉光克制一档（S2 起亮、S5 收），幅度按 §2.4 下调 */
+@keyframes aur1{0%{opacity:0;transform:scale(.90)}18%{opacity:.44}78%{opacity:.38}100%{opacity:0;transform:scale(1.10)}}
+@keyframes aur2{0%{opacity:0;transform:scale(.94)}24%{opacity:.36}76%{opacity:.32}100%{opacity:0;transform:scale(1.08)}}
+@keyframes aur3{0%{opacity:0;transform:scale(.92)}30%{opacity:.30}72%{opacity:.28}100%{opacity:0;transform:scale(1.14)}}
+/* 收尾：从"飞离"改成"定格后极短的轻推近" */
+@keyframes veilExit{from{transform:scale(1);opacity:1}to{transform:scale(1.02);opacity:0}}
+@keyframes railOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.02)}}
+@keyframes radarOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.06)}}
+@keyframes mExit{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.04)}}
+@keyframes txtOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-6px)}}
+@keyframes nodeFly{0%{opacity:1;transform:translate(0,0)}45%{opacity:1;transform:translate(0,-6px)}
+                   100%{opacity:1;transform:translate(0,0)}}
+/* 主环：由内向外展开（S2 抬升、S3 稳定、S4 提亮到定格档） */
+@keyframes ringOpen{0%{opacity:.18}20%{opacity:.24}44%{opacity:.34}70%{opacity:.50}100%{opacity:.52}}
+/* 核心心跳：S1 点亮一次、S4 同步再拍一次（同一条时间轴，不新增元素） */
+@keyframes dotBeat{0%{transform:scale(.40);opacity:0}6%{transform:scale(1.55);opacity:1}
+                   12%{transform:scale(1);opacity:1}62%{transform:scale(1);opacity:1}
+                   66%{transform:scale(1.70);opacity:1}71%{transform:scale(1);opacity:1}
+                   100%{transform:scale(1);opacity:1}}
+/* 指针：绷紧期拉长到汇聚结束，解扣与停住落在 S4（0.62） */
+@keyframes needle{
+  0%  {transform:rotate(-13deg);  animation-timing-function:var(--e-smooth)}
+  26% {transform:rotate(-16.5deg);animation-timing-function:linear}
+  46% {transform:rotate(-16.5deg);animation-timing-function:var(--e-snap)}
+  52% {transform:rotate(8.5deg);  animation-timing-function:var(--e-bouncy)}
+  57% {transform:rotate(-3.2deg); animation-timing-function:var(--e-bouncy)}
+  61% {transform:rotate(1.2deg);  animation-timing-function:var(--e-bouncy)}
+  64% {transform:rotate(0deg);    animation-timing-function:linear}
+  100%{transform:rotate(0deg)}
+}
+/* HUD 与跳过提示：降到"克制"档，并在定格前就退干净 */
+@keyframes hudLife{0%{opacity:0}2%{opacity:.34}88%{opacity:.34}100%{opacity:0}}
+@keyframes skipLife{0%,30%{opacity:0}38%{opacity:.30}90%{opacity:.30}100%{opacity:0}}
+
+/* --- D. v4 读取头跟随新编排（S2 起、S4 末停） --------------------------------- */
+.rail.r::after{animation-duration:calc(.58 * var(--fx) * 1ms);
+  animation-delay:calc((.22 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+
+/* --- F. 五拍视觉完成（S2 由内向外 / 指针随拍抬亮 / 波形化 / 同步脉冲） --------
+   全部落在既有元素上：没有新 DOM，没有新的每帧 JS。凡是不带 .a 的动画都自己写全
+   animation-* 长写属性，并带上 --ps/--t0/--scrub，才能被 gate 冻结、被跳过拖动。 */
+
+/* F1 指针：S1 只留轮廓 → 随环形展开抬亮 → 能量同步满亮（只动两条既有路径的 opacity） */
+.n-north,.n-south{
+  animation-name:v5needleLit;animation-iteration-count:1;animation-fill-mode:both;
+  animation-timing-function:linear;animation-play-state:var(--ps,running);
+  animation-duration:calc(1 * var(--fx) * 1ms);
+  animation-delay:calc((0 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+@keyframes v5needleLit{0%{opacity:.20}26%{opacity:.26}46%{opacity:.52}
+                       52%{opacity:.72}64%{opacity:1}100%{opacity:1}}
+
+/* F2 四个环由内向外依次点亮：内环(0.08) → 轨道环(0.20) → 刻度环(0.22→0.62) → 表圈(0.28)
+   用元素 opacity 而不是 stroke-opacity：单笔画圆环上两者等价，但前者走合成器不重绘
+   （和 .ring-dim 的取舍一致）。 */
+.orbit-ring{opacity:0;animation-name:v5ringOrbit;animation-iteration-count:1;
+  animation-fill-mode:both;animation-timing-function:var(--e-orbit);
+  animation-play-state:var(--ps,running);
+  animation-duration:calc(.16 * var(--fx) * 1ms);
+  animation-delay:calc((.20 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+@keyframes v5ringOrbit{0%{opacity:0}100%{opacity:.5}}
+.bezel-ring{opacity:0;animation-name:v5ringBezel;animation-iteration-count:1;
+  animation-fill-mode:both;animation-timing-function:var(--e-orbit);
+  animation-play-state:var(--ps,running);
+  animation-duration:calc(.20 * var(--fx) * 1ms);
+  animation-delay:calc((.28 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+@keyframes v5ringBezel{0%{opacity:0}100%{opacity:.5}}
+
+/* F3 右栏从"随机条码"改成中心对称的数据波形：条从中心向两侧长、中间一条零线 */
+.mtr{align-items:center;
+  background:
+    linear-gradient(180deg,transparent calc(50% - .5px),rgba(150,190,255,.16) 50%,transparent calc(50% + .5px)),
+    repeating-linear-gradient(180deg,transparent 0 7px,rgba(120,150,255,.05) 7px 8px)}
+.mtr i{height:2.5px;border-radius:2px;transform-origin:50% 50%;
+  background:linear-gradient(90deg,rgba(90,130,255,.30),var(--c-brand) 20%,
+             var(--c-volt-hi) 50%,var(--c-brand) 80%,rgba(90,130,255,.30))}
+
+/* F4 能量同步：把 .pulse 从"整圈闪"改成"一段亮弧绕环跑一周"（复用既有圆，不增元素） */
+.pulse{stroke-dasharray:150 353;stroke-dashoffset:503}
+.pulse.a{--d:.62;--dur:.12}
+@keyframes pulse{0%{opacity:0;stroke-dashoffset:503;transform:scale(1)}
+                 14%{opacity:.85}
+                 100%{opacity:0;stroke-dashoffset:0;transform:scale(1.04)}}
+
+/* F5 读取头也要能被 hold 冻结（窗口 0.22–0.80 本来就在 gate 之前结束，这里是保险） */
+.rail.r::after{animation-play-state:var(--ps,running)}
+
+/* F 的降级：新增的非 .a 动画必须一起停掉，否则减弱动效下它们还在跑 */
+/* ============================================================================
+   v6 · 真正的空间纵深（3D 透视 / 分层 Z / 相机推拉 / 倾斜轨道）
+   ----------------------------------------------------------------------------
+   参考图里那种"世界在景深里"的读法，靠的不是阴影，而是同一套透视坐标系：
+     `#boot` 设 perspective 并 preserve-3d，各层给不同的 translateZ，
+     相机（.stack 的 translateZ）一动，远层与近层位移不同 -> 分层视差。
+   硬约束不变：不新增 DOM（倾斜轨道用 .radarwrap 的两个伪元素）、
+     只动 transform/opacity/filter、每个新动画都带 --ps/--t0/--scrub。
+   分层（景深顺序）：#bg 远场(-160) → .cross 准星(-80) → 轨道B(-46) →
+     .stack 表盘(0，随相机移动) → 轨道A(+70) → HUD/侧栏/框线（贴在"玻璃"上，不参与 3D）
+   注意：HUD/侧栏/框线**故意保持平面** —— 它们是仪表玻璃，跟着透视漂移会破坏构图。
+   ============================================================================ */
+
+/* A. 同一个三维空间 */
+#boot{perspective:1100px;perspective-origin:50% 44%;transform-style:preserve-3d}
+.stack{transform-style:preserve-3d}
+.core{transform-style:preserve-3d}
+.radarwrap{transform-style:preserve-3d}
+
+/* B. 分层景深：远场后退、准星居中、表盘在焦点面 */
+#bg{transform:translateZ(-160px) scale(1.145);
+  background-image:linear-gradient(180deg,rgba(120,160,255,.055),transparent 34%)}
+.cross{transform:translateZ(-80px) scale(1.072)}
+
+/* C. 相机：S1 从远处起、S4 推到最近、S5 收一点后停住（定格时不再移动）
+   动的是 .stack，透视来自 #boot，所以远层（#bg/.cross）自动产生视差。 */
+.stack{animation-name:v6cam;animation-duration:calc(1 * var(--fx) * 1ms);
+  animation-delay:calc((0 - var(--t0) - var(--scrub)) * var(--fx) * 1ms);
+  animation-fill-mode:both;animation-timing-function:var(--e-orbit);
+  animation-play-state:var(--ps,running)}
+@keyframes v6cam{
+  0%  {transform:translate3d(0,0,-104px)}
+  14% {transform:translate3d(0,0,-78px)}
+  36% {transform:translate3d(-6px,3px,-26px)}
+  62% {transform:translate3d(5px,-3px,18px)}
+  84% {transform:translate3d(0,0,30px)}
+  90% {transform:translate3d(0,0,16px)}
+  100%{transform:translate3d(0,0,16px)}
+}
+
+/* D. 倾斜轨道：两个伪元素，一条近轨、一条远轨，各自反向慢转。
+   尺寸按表盘直径取（--size × 1.9），倾角 68°，所以读起来是"绕着表盘的轨道"而不是
+   一条贴在旁边的线；mask 只把背面那半压到 55%（不是抹掉），整圈仍看得见。
+   节点仍留在盘面内 —— 不新增任何元素。
+
+   ⚠ 实测更正（_shoot/depth-verify.mjs，Chromium 152）：**伪元素的 translateZ 被整个丢弃**。
+     · 同一关键帧把 Z 从 70/-46 改成 0 或 ±600，画面逐位相同 —— Z 既不改变投影尺寸，
+       也不参与前后遮挡。
+     · 对照：真实元素的 Z 是生效的（.core / .radarwrap 给 Z=300 后 rect 由 360 → 491；
+       #bg 与 .cross 的 Z 也照常投影）。所以这不是 opacity/mask 的锅，是伪元素的限制。
+   结论：这里的前后关系**只能靠绘制顺序 + 不透明度**表达，不能再靠 Z。
+   绘制顺序由 DOM 决定：::before 画在 .radarwrap 的子内容（表盘）之下，::after 画在其上。
+   因此 ::before 必须是"远轨"（暗），::after 必须是"近轨"（亮）——反了就会变成
+   "远轨压在表盘上、近轨藏在表盘后"。 */
+.radarwrap::before,.radarwrap::after{content:'';position:absolute;left:50%;top:50%;
+  width:calc(var(--size)*1.9);height:calc(var(--size)*1.9);
+  margin-left:calc(var(--size)*-.95);margin-top:calc(var(--size)*-.95);
+  border-radius:50%;border:1px solid rgba(160,200,255,.5);pointer-events:none;opacity:0;
+  -webkit-mask-image:linear-gradient(90deg,#000 0 60%,rgba(0,0,0,.55) 68%,rgba(0,0,0,.55) 100%);
+          mask-image:linear-gradient(90deg,#000 0 60%,rgba(0,0,0,.55) 68%,rgba(0,0,0,.55) 100%);
+  animation-iteration-count:1;animation-fill-mode:both;
+  animation-timing-function:var(--e-orbit);animation-play-state:var(--ps,running);
+  animation-duration:calc(.34 * var(--fx) * 1ms)}
+.radarwrap::before{animation-name:v6trackFar;                   /* 远轨：画在表盘下 */
+  animation-delay:calc((.20 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+.radarwrap::after{animation-name:v6trackNear;                   /* 近轨：画在表盘上 */
+  animation-delay:calc((.24 - var(--t0) - var(--scrub)) * var(--fx) * 1ms)}
+@keyframes v6trackFar{
+  0%  {opacity:0;transform:rotateX(-62deg) rotateZ(-16deg)}
+  20% {opacity:.44}
+  100%{opacity:.40;transform:rotateX(-62deg) rotateZ(28deg)}}
+@keyframes v6trackNear{
+  0%  {opacity:0;transform:rotateX(68deg) rotateZ(20deg)}
+  20% {opacity:.60}
+  100%{opacity:.55;transform:rotateX(68deg) rotateZ(-24deg)}}
+
+/* E. 空间纵深：远场加空气透视。真实世界里远处的东西更暗、更灰、对比更低 —— 这是
+   最便宜的景深线索（只动 filter，不动布局）。#bg 已经做了 Z 补偿，尺寸不变，
+   只降亮降饱和；.cross 只降一点，避免网格在暗底上抢焦点。 */
+#bg{filter:brightness(.80) saturate(.70)}
+.cross{filter:brightness(.92)}
+
+/* E. 降级：3D 与倾斜轨道一起收平（减弱动效下不做相机运动，也不留斜坡） */
+@media (prefers-reduced-motion: reduce){
+  /* 必须用 #bg 而不是 .bg：3D 那条规则是 `#bg{transform:translateZ(-160px) scale(1.145)}`，
+     ID 选择器（1,0,0）压过类选择器（0,1,0），写 .bg 会静默失效 ——
+     实测减弱动效下 #bg 仍带着 -160px/1.145 的矩阵。 */
+  #bg{transform:none}
+  .cross{transform:none}
+  .stack{animation-name:none;transform:none}
+  /* 减弱动效下不做相机运动，也不留斜坡；两条轨道保持各自倾角，只是不再转 */
+  .radarwrap::before{animation-name:none;opacity:.30;transform:rotateX(-62deg) rotateZ(4deg)}
+  .radarwrap::after{animation-name:none;opacity:.46;transform:rotateX(68deg) rotateZ(-6deg)}
+  .n-north,.n-south{animation-name:none;opacity:1}
+  .orbit-ring,.bezel-ring{animation-name:none;opacity:.5}
+  .pulse{animation-name:pulse;stroke-dashoffset:0}
+}
+
+/* --- E. 减弱动效必须与主线同拍（否则降级路径会与五拍错位） ------------------- */
+@media (prefers-reduced-motion: reduce){
+  .bg{animation-name:bgOut;--d:.94;--dur:.06;--ease:var(--e-exit)}
+  .cross{animation-name:crossOut;--d:.94;--dur:.06;--ease:var(--e-exit)}
+  .railwrap{animation-name:railOut;--d:.94;--dur:.06;--ease:var(--e-exit)}
+  .logv{animation-name:logOut;--d:.94;--dur:.06;--ease:var(--e-exit)}
+  .mark{animation-name:mExit;--d:.95;--dur:.05;--ease:var(--e-exit)}
+  .txt{animation-name:txtOut;--d:.95;--dur:.05;--ease:var(--e-exit)}
+  .veil{animation-name:veilExit;--d:.95;--dur:.05;--ease:var(--e-exit)}
+  .pg{opacity:.9;animation-name:pg;--d:.20;--dur:.62;--ease:linear}
+  .hud{opacity:.34;animation-name:rmFade;--d:.90;--dur:.10;--ease:var(--e-exit)}
+  .skip{opacity:.30;animation-name:rmFade;--d:.90;--dur:.10;--ease:var(--e-exit)}
+  .rail.r::after{animation-name:none;opacity:0}
 }
