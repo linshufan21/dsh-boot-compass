@@ -861,8 +861,20 @@ body{
    注意：HUD/侧栏/框线**故意保持平面** —— 它们是仪表玻璃，跟着透视漂移会破坏构图。
    ============================================================================ */
 
-/* A. 同一个三维空间 */
-#boot{perspective:1100px;perspective-origin:50% 44%;transform-style:preserve-3d}
+/* A. 同一个三维空间
+   perspective-origin 取**盘心的屏幕位置**，不是视口中心 —— 这样相机的纯 Z 推拉读起来是
+   "绕盘心同心缩放"：盘心一动不动，远场（#bg/.cross）绕它向外扩。
+   取值来自实测：盘心的**布局**中心在视口 39.76% 处（=357.84px / 900）。
+   怎么得到这个真值的：减弱动效那一路没有任何变换，drift-check 量到的 357.84 就是布局中心；
+   而 p=0 时相机在 Z=-104（k=0.9136），量到 358.03，反解回去正好是 357.84 —— 两路互相印证。
+   取 44%（旧的随手值）会让盘心在推拉时被推着上下走 ~7px。
+
+   相机行程只暴露**一个旋钮**（纪律来自 Motion.Lab：一个效果 = 一个带默认值与范围的旋钮）：
+   --cam-k 推近倍率，`0` = 完全不推（表盘大小不变）、`1` = 默认、`1.5` = 更强。
+   乘 1 时每个停靠点都还是精确的整数像素，所以默认行为与写死数值**逐位相同**；
+   先前试过"按比例插值"，结果 134px × .582 算出 −26.012px（亚像素重光栅，帧不再逐位相同），弃用。 */
+#boot{perspective:1100px;perspective-origin:50% 39.76%;transform-style:preserve-3d;
+  --cam-k:1}
 .stack{transform-style:preserve-3d}
 .core{transform-style:preserve-3d}
 .radarwrap{transform-style:preserve-3d}
@@ -873,19 +885,26 @@ body{
 .cross{transform:translateZ(-80px) scale(1.072)}
 
 /* C. 相机：S1 从远处起、S4 推到最近、S5 收一点后停住（定格时不再移动）
-   动的是 .stack，透视来自 #boot，所以远层（#bg/.cross）自动产生视差。 */
+   动的是 .stack，透视来自 #boot，所以远层（#bg/.cross）自动产生视差。
+
+   ⚠ 0.3.0 这里带了 X/Y 分量（36% translateX(-6px) → 62% translateX(+5px)），
+   想做出"手持感"。实测结果是坏的：盘心横向漂 ±5.86px、纵向 ±6.98px
+   （_shoot/drift-check.mjs 逐 2% 采样 51 点）。因为 HUD 与侧栏是静止的，
+   这点位移读起来不是"镜头在动"，而是**表盘自己在左右摇**。
+   → 稳定版：相机只允许动 Z。任何 X/Y 分量都会直接变成被摄主体的位移。 */
 .stack{animation-name:v6cam;animation-duration:calc(1 * var(--fx) * 1ms);
   animation-delay:calc((0 - var(--t0) - var(--scrub)) * var(--fx) * 1ms);
   animation-fill-mode:both;animation-timing-function:var(--e-orbit);
   animation-play-state:var(--ps,running)}
+/* 停靠点乘 --cam-k；默认 1 时全是精确整数像素，与 0.3.0 的数值逐位相同 */
 @keyframes v6cam{
-  0%  {transform:translate3d(0,0,-104px)}
-  14% {transform:translate3d(0,0,-78px)}
-  36% {transform:translate3d(-6px,3px,-26px)}
-  62% {transform:translate3d(5px,-3px,18px)}
-  84% {transform:translate3d(0,0,30px)}
-  90% {transform:translate3d(0,0,16px)}
-  100%{transform:translate3d(0,0,16px)}
+  0%  {transform:translateZ(calc(-104px * var(--cam-k)))}
+  14% {transform:translateZ(calc(-78px * var(--cam-k)))}
+  36% {transform:translateZ(calc(-26px * var(--cam-k)))}
+  62% {transform:translateZ(calc(18px * var(--cam-k)))}
+  84% {transform:translateZ(calc(30px * var(--cam-k)))}
+  90% {transform:translateZ(calc(16px * var(--cam-k)))}
+  100%{transform:translateZ(calc(16px * var(--cam-k)))}
 }
 
 /* D. 倾斜轨道：两个伪元素，一条近轨、一条远轨，各自反向慢转。
