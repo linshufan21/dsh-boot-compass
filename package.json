@@ -1,6 +1,6 @@
 {
   "name": "dsh-boot-compass",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "「点火 / 校准」启动动画：在 DSH 画出加载卡之前接住首帧，播完五阶段罗盘序列再交接给主界面；关窗再从托盘打开还会重播一遍。纯代码，零视频资源。",
   "type": "module",
   "main": "./lib/index.js",
@@ -39,7 +39,7 @@
   },
   "dsh": {
     "engines": {
-      "dsh": ">=0.2.0-rc.1"
+      "dsh": ">=0.2.0-rc.1 <0.3.0"
     },
     "bundle": {
       "patch": "./cordis.patch.yml"
@@ -70,7 +70,10 @@
     ],
     "compatibility": {
       "dshVersions": [
-        "0.2.0-rc.1"
+        "0.2.0-rc.1",
+        "0.2.0-rc.2",
+        "0.2.1-rc.1",
+        "0.2.1-rc.2"
       ]
     },
     "capability": {

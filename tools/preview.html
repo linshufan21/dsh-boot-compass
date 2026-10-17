@@ -65,7 +65,7 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
   </div>
 </div>
 <div data-dsh-boot><div class="row"><span data-dsh-boot-spinner></span><span>HARNESS 正在加载插件…</span></div></div>
-<div id="probe">宿主行实况 · rows[<b>style, script</b>] · style 407 B · script 81770 B</div>
+<div id="probe">宿主行实况 · rows[<b>style, script</b>] · style 407 B · script 82910 B</div>
 
 <!-- ===== 模拟宿主卡消失 = 应用就绪；这是真实 gate 的输入 ===== -->
 <script>
@@ -200,6 +200,19 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
   var FRESH_MS = 2500;
   /** Safety net for a missed visibilitychange; also refreshes the epoch baseline. */
   var HEARTBEAT_MS = 10000;
+  /**
+   * How long the gate keeps looking for the host's boot card before assuming it
+   * cannot recognise this host.
+   *
+   * The card is identified by `[data-dsh-boot]`, an attribute of DSH's shell and
+   * not of this package. When a later host renames it, `isReady()` used to fall
+   * through to `sawCard` and hold the HOLD frame until MAX_MS -- a 12 s splash on
+   * a machine that booted in 4. An unidentifiable host is not a reason to wait:
+   * after this much time without ever seeing a card, the splash plays to its end
+   * and hands over, exactly like the boot that had no splash. Measured card
+   * first-paint here is ~120 ms, so the margin mostly covers a loaded machine.
+   */
+  var CARD_GRACE_MS = 2000;
 
   function store(key) {
     try { return window.localStorage.getItem(key); } catch (error) { return null; }
@@ -475,6 +488,8 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
      */
     var released = replaying;
     var sawCard = false;
+    /** Set once CARD_GRACE_MS passed without a card: this host is not one we know. */
+    var noCard = false;
     var finished = false;
     var forced = replaying;   // set by __dshBoot.ready()
     var seekT0 = 0;        // accumulated skip, in fractions of the timeline
@@ -486,6 +501,9 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
 
     function isReady() {
       if (forced) return true;
+      // An unrecognised host counts as ready from the grace deadline on, so a
+      // renamed boot card can lengthen the wait but never strand the splash.
+      if (noCard) return true;
       if (window.__DSH_BOOT_READY__ === true) return true;
       var el = document.querySelector('[data-dsh-boot]');
       if (el === null) return sawCard;   // seen, then gone => the app mounted
@@ -505,7 +523,7 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
       ready: function () { forced = true; release(); },
       skip: function () { skip(); },
       state: function () {
-        return { progress: lastP, held: held, released: released, finished: finished, total: TOTAL, replay: replaying };
+        return { progress: lastP, held: held, released: released, finished: finished, total: TOTAL, replay: replaying, noCard: noCard };
       },
     };
 
@@ -528,6 +546,7 @@ html.dshboot-on{background:#0A0B10;--dsw-specific-sidebar-fill:#0A0B10;--dsw-ali
       watch = window.setInterval(function () {
         if (isReady()) { sawCard = true; release(); }
         else if (document.querySelector('[data-dsh-boot]') !== null) { sawCard = true; }
+        else if (!sawCard && performance.now() - t0 >= CARD_GRACE_MS) { noCard = true; release(); }
       }, 200);
       ceiling = window.setTimeout(function () { release(); }, MAX_MS);
     }
